@@ -243,15 +243,21 @@ async function main() {
       return i * 2
   }
 
-  function addMove(_: Color, move: string | undefined, __: number) {
-    // if (player == 'white') {
-    //   let line = document.createElement('div')
-    //   line.textContent = i.toString()
-    //   historyNode.appendChild(line)
-    // }
-    let moveNode = document.createElement('div')
-    moveNode.textContent = move || '?'
-    historyNode.appendChild(moveNode)
+  function addMove(player: Color, move: string | undefined, i: number) {
+    if (player == 'white') {
+      let line = document.createElement('div')
+      line.textContent = `${Math.ceil(i)}. `
+      historyNode.appendChild(line)
+      let moveNode = document.createElement('span')
+      moveNode.dataset.move = i.toString()
+      moveNode.textContent = move || '?'
+      line.appendChild(moveNode)
+    } else {
+      let moveNode = document.createElement('span')
+      moveNode.dataset.move = i.toString()
+      moveNode.textContent = ' ' + (move || '?')
+      historyNode.lastChild!.appendChild(moveNode)
+    }
   }
 
   function recordHistory(player: Color, move: string | undefined, state: Board) {
@@ -275,8 +281,9 @@ async function main() {
       oldNode.classList.remove('history-pointer')
     }
     let i = historyPointer - 1
-    if (0 <= i && i < historyNode.children.length) {
-      historyNode.children[i].classList.add('history-pointer')
+    let move = historyNode.querySelector(`[data-move="${i}"]`)
+    if (move) {
+      move.classList.add('history-pointer')
     }
   }
 
