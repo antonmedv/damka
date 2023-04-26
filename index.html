@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Шашки</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="web/style.css">
+</head>
+<body>
+<main>
+    <nav>
+        <button id="new-game">Новая игра</button>
+    </nav>
+    <div id="board" class="board">
+        <div class="lines"></div>
+        <div class="playground"></div>
+        <div class="letters"></div>
+    </div>
+    <div class="history-wrap">
+        <div id="history" class="history"></div>
+        <div class="controls">
+            <button class="back" id="back">◀︎ Назад</button>
+            <button class="forward" id="forward">▶︎</button>
+        </div>
+    </div>
+</main>
+<script type="module" src="web/main.ts"></script>
+</body>
+</html>

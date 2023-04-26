@@ -1,0 +1,16 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build:wasm": "zx scripts/build.mjs",
+    "build": "tsc && vite build --base=/шашки/",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "threads": "^1.7.0",
+    "typescript": "^4.9.3",
+    "vite": "^4.0.0",
+    "zx": "^7.1.1"
+  }
+}
