@@ -4,7 +4,6 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
-	"os"
 	"runtime"
 	"sync"
 
@@ -12,15 +11,13 @@ import (
 )
 
 var (
-	db      EndgameDB
-	depth   = 4
 	player1 = NetHeiOay
 	player2 = NetHeiOay
 )
 
 func worker(ctx context.Context, work chan Board, output chan [2]Status) {
-	p1 := NewMinimax(player1, depth, nil)
-	p2 := NewMinimax(player2, depth, db)
+	p1 := NewMinimax(player1, 4, nil)
+	p2 := NewMinimax(player2, 4, nil)
 	for {
 		select {
 		case <-ctx.Done():
@@ -35,12 +32,6 @@ func worker(ctx context.Context, work chan Board, output chan [2]Status) {
 }
 
 func main() {
-	var err error
-	db, err = os.ReadFile("wasm/endgame.db")
-	if err != nil {
-		panic(err)
-	}
-
 	b := NewBoard()
 	boards := []Board{
 		b,

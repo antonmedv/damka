@@ -32,8 +32,12 @@ type Player interface {
 func Play(b Board, player, opponent Player, debug bool) Status {
 	moveNumber := 0
 	for {
-		moveNumber++
+		if debug {
+			fmt.Printf("\033[2J\033[H")
+			fmt.Printf("%v\n\n", b)
+		}
 
+		moveNumber++
 		moves := b.AllMoves()
 
 		if len(moves) == 0 {
@@ -63,14 +67,13 @@ func Play(b Board, player, opponent Player, debug bool) Status {
 
 		var rate float64
 		var move Board
-		var steps int
 		if b.IsWhiteTurn() {
-			move, rate, steps = player.BestMove(b, debug)
+			move, rate, _ = player.BestMove(b, debug)
 		} else {
-			move, rate, steps = opponent.BestMove(b, debug)
+			move, rate, _ = opponent.BestMove(b, debug)
 		}
 		if debug {
-			fmt.Printf("best %v move: %v (%.10f %v)\n%v\n\n", b.TurnString(), b.GenerateMoveName(move), rate, steps, move)
+			fmt.Printf("best %v move: %v (%.10f)\n", b.TurnString(), b.GenerateMoveName(move), rate)
 		}
 		b = move
 	}
