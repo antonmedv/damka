@@ -3,6 +3,8 @@ package src
 import (
 	"fmt"
 	"math"
+	"math/rand"
+	"time"
 )
 
 var (
@@ -73,6 +75,31 @@ func (m *Minimax) ClearStats() {
 	m.DBHits = 0
 }
 
+// weightedRandomPick returns a random index from the given slice of rates,
+// with the probability of selecting each index being proportional to its rate.
+func weightedRandomPick(rates []float64) int {
+	// Compute the sum of all rates.
+	total := 0.0
+	for _, rate := range rates {
+		total += rate
+	}
+
+	// Generate a random value between 0 and the total sum.
+	rand.Seed(time.Now().UnixNano())
+	r := rand.Float64() * total
+
+	// Find the index corresponding to the random value.
+	runningTotal := 0.0
+	for i, rate := range rates {
+		runningTotal += rate
+		if r <= runningTotal {
+			return i
+		}
+	}
+
+	return len(rates) - 1
+}
+
 // BestMove returns the best move and its rate.
 func (m *Minimax) BestMove(b Board, debug bool) (Board, float64, int) {
 	possibleMoves := b.AllMoves()
@@ -89,61 +116,35 @@ func (m *Minimax) BestMove(b Board, debug bool) (Board, float64, int) {
 	}
 
 	if b.IsWhiteTurn() {
-		bestMove := possibleMoves[0]
-		maxRate := MinusInf
-		minSteps := 0
-		for _, move := range possibleMoves {
+		// Collect rates and moves in separate slices.
+		rates := make([]float64, len(possibleMoves))
+		moves := make([]Board, len(possibleMoves))
+		for i, move := range possibleMoves {
 			rate, steps := m.Minimax(move, m.MaxDepth, MinusInf, Inf)
+			rates[i] = rate
+			moves[i] = move
 			if debug {
 				fmt.Printf("white %s: (%.10f %d)\n", b.GenerateMoveName(move), rate, steps)
 			}
-			if rate > maxRate {
-				bestMove = move
-				maxRate = rate
-				minSteps = steps
-			} else if rate == maxRate {
-				if rate == -1 {
-					if steps > minSteps {
-						bestMove = move
-						minSteps = steps
-					}
-				} else {
-					if steps < minSteps {
-						bestMove = move
-						minSteps = steps
-					}
-				}
-			}
 		}
-		return bestMove, maxRate, minSteps
+		// Choose a random move based on the rates.
+		index := weightedRandomPick(rates)
+		return moves[index], rates[index], 42
 	} else {
-		bestMove := possibleMoves[0]
-		minRate := Inf
-		minSteps := 0
-		for _, move := range possibleMoves {
+		// Collect rates and moves in separate slices.
+		rates := make([]float64, len(possibleMoves))
+		moves := make([]Board, len(possibleMoves))
+		for i, move := range possibleMoves {
 			rate, steps := m.Minimax(move, m.MaxDepth, MinusInf, Inf)
+			rates[i] = rate
+			moves[i] = move
 			if debug {
 				fmt.Printf("black %s: (%.10f %d)\n", b.GenerateMoveName(move), rate, steps)
 			}
-			if rate < minRate {
-				bestMove = move
-				minRate = rate
-				minSteps = steps
-			} else if rate == minRate {
-				if rate == 1 {
-					if steps > minSteps {
-						bestMove = move
-						minSteps = steps
-					}
-				} else {
-					if steps < minSteps {
-						bestMove = move
-						minSteps = steps
-					}
-				}
-			}
 		}
-		return bestMove, minRate, minSteps
+		// Choose a random move based on the rates.
+		index := weightedRandomPick(rates)
+		return moves[index], rates[index], -42
 	}
 }
 
