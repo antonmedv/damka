@@ -108,7 +108,7 @@ func (net *Network) Evaluate(b Board, nodes []float64) float64 {
 			biasIndex++
 
 			// Activation function.
-			nodes[nodesOffset+i] = math.Max(0, a)
+			nodes[nodesOffset+i] = math.Tanh(a)
 		}
 		prevOffset = nodesOffset
 		nodesOffset += net.Layers[l]
@@ -120,7 +120,7 @@ func (net *Network) Evaluate(b Board, nodes []float64) float64 {
 		rate = -rate
 	}
 
-	return math.Tanh(rate)
+	return rate
 }
 
 func GenerateRandomNetwork() *Network {

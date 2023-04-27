@@ -27,7 +27,7 @@ func minimax(b Board) {
 		panic(err)
 	}
 
-	m := NewMinimax(NetHeiOay, 8, db)
+	m := NewMinimax(Zero, 8, db)
 
 	start := time.Now()
 	best, rate, steps := m.BestMove(b, true)
