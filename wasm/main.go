@@ -18,7 +18,7 @@ var (
 )
 
 func main() {
-	m = NewMinimax(NetHeiOay, 2, nil)
+	m = NewMinimax(NetHeiOay, 8, nil)
 	js.Global().Set("minimax", js.FuncOf(minimax))
 	js.Global().Set("allMoves", js.FuncOf(allMoves))
 	js.Global().Set("buildTime", js.ValueOf(buildTime))
@@ -37,7 +37,7 @@ func minimax(this js.Value, args []js.Value) any {
 	beta := math.Inf(1)
 	m.ClearStats()
 	rate, steps := m.Minimax(b, depth, alpha, beta)
-	fmt.Printf("(cache_size:%v cache_hits:%v db_hits:%v)\n", len(m.Cache), m.CacheHits, m.DBHits)
+	// fmt.Printf("(cache_size:%v cache_hits:%v db_hits:%v)\n", len(m.Cache), m.CacheHits, m.DBHits)
 	if len(m.Cache) > 1_000_000 {
 		fmt.Println("cache cleared after", len(m.Cache), "entries")
 		m.Cache = make(map[Params]Score)
