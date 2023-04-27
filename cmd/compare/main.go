@@ -10,10 +10,8 @@ import (
 	. "checkers/src"
 )
 
-var (
-	player1 = Zero
-	player2 = One
-)
+var player1 = GenerateRandomNetwork()
+var player2 = Zero
 
 func worker(ctx context.Context, work chan Board, output chan [2]Status) {
 	p1 := NewMinimax(player1, 4, nil)
@@ -32,6 +30,8 @@ func worker(ctx context.Context, work chan Board, output chan [2]Status) {
 }
 
 func main() {
+	player2 = LoadPopulation("data/6h.json")[0].Net
+
 	b := NewBoard()
 	boards := []Board{
 		b,

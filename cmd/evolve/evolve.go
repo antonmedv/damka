@@ -4,7 +4,6 @@ import (
 	. "checkers/src"
 	"encoding/json"
 	"fmt"
-	"math"
 	"math/rand"
 	"os"
 	"path"
@@ -30,18 +29,11 @@ func main() {
 	// If argument is provided, use it as a name of the population.
 	if len(os.Args) > 1 {
 		fileName = path.Base(os.Args[1])
-		buf, err := os.ReadFile(os.Args[1])
-		if err != nil {
-			panic(err)
-		}
-		err = json.Unmarshal(buf, &population)
-		if err != nil {
-			panic(err)
-		}
+		population = LoadPopulation(os.Args[1])
 	} else {
 		population = make([]*Breed, defaultPopSize)
 		for i := range population {
-			population[i] = createRandomBreed()
+			population[i] = CreateRandomBreed()
 		}
 	}
 
@@ -74,12 +66,12 @@ func main() {
 
 		for i := range population {
 			population[i].Age++
-			population[i].clearStats()
+			population[i].ClearStats()
 		}
 
 		// Breed the population back to 100%
 		for _, breed := range population {
-			population = append(population, breed.mutate())
+			population = append(population, breed.Mutate())
 		}
 
 		// Marshal the population to JSON
@@ -100,7 +92,7 @@ func main() {
 
 func printStats(population []*Breed) {
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	breedTitle(w)
+	BreedTitle(w)
 
 	long := population[0]
 	best := population[0]
@@ -121,10 +113,10 @@ func printStats(population []*Breed) {
 			mostChildren = breed.Name
 		}
 	}
-	best.print(w, "Best Score")
-	long.print(w, "Longest Survivor")
-	unluckiest.print(w, "Unluckiest")
-	worst.print(w, "Worst Score")
+	best.Print(w, "Best Score")
+	long.Print(w, "Longest Survivor")
+	unluckiest.Print(w, "Unluckiest")
+	worst.Print(w, "Worst Score")
 	_ = w.Flush()
 
 	println()
@@ -163,61 +155,6 @@ func worker(gameChan <-chan game, wg *sync.WaitGroup) {
 		g.play()
 		wg.Done()
 	}
-}
-
-type Breed struct {
-	sync.Mutex
-	Name   string
-	Parent string
-	Age    int
-	Gen    int
-	Net    *Network
-	Score  float64
-	Wins   int
-	Losses int
-	Draws  int
-	Sigma  []float64
-}
-
-func (b *Breed) mutate() *Breed {
-	T := 1 / math.Sqrt(2*math.Sqrt(float64(len(b.Net.Weights))))
-	sigma := make([]float64, len(b.Sigma))
-	for i := range b.Sigma {
-		sigma[i] = b.Sigma[i] * math.Exp(T*rand.NormFloat64())
-	}
-
-	net := b.Net.Copy()
-	for i := range net.Weights {
-		net.Weights[i] += sigma[i] * rand.NormFloat64()
-	}
-	for i := range net.Biases {
-		net.Biases[i] += sigma[len(net.Weights)+i] * rand.NormFloat64()
-	}
-
-	newBreed := &Breed{
-		Name:   generateRandomName(),
-		Parent: b.Name,
-		Gen:    b.Gen + 1,
-		Net:    net,
-		Sigma:  sigma,
-	}
-
-	return newBreed
-}
-
-func (b *Breed) clearStats() {
-	b.Score = 0
-	b.Wins = 0
-	b.Losses = 0
-	b.Draws = 0
-}
-
-func breedTitle(w *tabwriter.Writer) {
-	_, _ = fmt.Fprintln(w, "\tName\tParent\tAge\tGen\tScore\tWins\tLosses\tDraws")
-}
-
-func (b *Breed) print(w *tabwriter.Writer, title string) {
-	_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%d\t%.2f\t%d\t%d\t%d\n", title, b.Name, b.Parent, b.Age, b.Gen, b.Score, b.Wins, b.Losses, b.Draws)
 }
 
 type game struct {
@@ -277,51 +214,6 @@ func shufflePopulation(population []*Breed) {
 	}
 }
 
-func createRandomBreed() *Breed {
-	net := generateRandomNetwork()
-	sigma := make([]float64, len(net.Weights)+len(net.Biases))
-	for i := range sigma {
-		sigma[i] = .05
-	}
-
-	return &Breed{
-		Name:  generateRandomName(),
-		Gen:   1,
-		Net:   net,
-		Sigma: sigma,
-	}
-}
-
-func generateRandomNetwork() *Network {
-	net := NewNetwork()
-	for i := range net.Weights {
-		net.Weights[i] = rand.Float64()*2 - 1
-	}
-	for i := range net.Biases {
-		net.Biases[i] = rand.Float64()*2 - 1
-	}
-	return net
-}
-
-func generateRandomName() string {
-	minLength := 3
-	maxLength := 5
-	vowels := "aeiouy"
-	consonants := "bcdfghjklmnpqrstvwxz"
-	nameLength := rand.Intn(maxLength-minLength+1) + minLength
-	name := make([]byte, nameLength)
-
-	for i := 0; i < nameLength; i++ {
-		if i%2 == 0 {
-			name[i] = consonants[rand.Intn(len(consonants))]
-		} else {
-			name[i] = vowels[rand.Intn(len(vowels))]
-		}
-	}
-
-	return string(name)
-}
-
 func progressBar(current, total, width int) {
 	progress := float64(current) / float64(total)
 	filled := int(progress * float64(width))
@@ -339,9 +231,9 @@ func progressBar(current, total, width int) {
 
 func printPopulation(population []*Breed) {
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	breedTitle(w)
+	BreedTitle(w)
 	for i, breed := range population {
-		breed.print(w, fmt.Sprintf("%d.", i+1))
+		breed.Print(w, fmt.Sprintf("%d.", i+1))
 	}
 	_ = w.Flush()
 }

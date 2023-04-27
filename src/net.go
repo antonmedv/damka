@@ -2,6 +2,7 @@ package src
 
 import (
 	"math"
+	"math/rand"
 )
 
 var defaultLayers = []int{128, 32, 32, 1}
@@ -120,4 +121,15 @@ func (net *Network) Evaluate(b Board, nodes []float64) float64 {
 	}
 
 	return math.Tanh(rate)
+}
+
+func GenerateRandomNetwork() *Network {
+	net := NewNetwork()
+	for i := range net.Weights {
+		net.Weights[i] = rand.Float64()*2 - 1
+	}
+	for i := range net.Biases {
+		net.Biases[i] = rand.Float64()*2 - 1
+	}
+	return net
 }
