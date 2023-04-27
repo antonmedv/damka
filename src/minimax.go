@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
-	"time"
 )
 
 var (
@@ -14,7 +13,7 @@ var (
 
 type Minimax struct {
 	MaxDepth int
-	Net      Network
+	Net      *Network
 	Cache    map[Params]Score
 	DB       EndgameDB
 
@@ -58,7 +57,7 @@ func (s Score) Byte() byte {
 	return b
 }
 
-func NewMinimax(net Network, maxDepth int, db EndgameDB) *Minimax {
+func NewMinimax(net *Network, maxDepth int, db EndgameDB) *Minimax {
 	return &Minimax{
 		Net:      net,
 		MaxDepth: maxDepth,
@@ -85,7 +84,6 @@ func weightedRandomPick(rates []float64) int {
 	}
 
 	// Generate a random value between 0 and the total sum.
-	rand.Seed(time.Now().UnixNano())
 	r := rand.Float64() * total
 
 	// Find the index corresponding to the random value.

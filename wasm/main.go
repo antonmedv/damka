@@ -18,7 +18,7 @@ var (
 )
 
 func main() {
-	m = NewMinimax(NetHeiOay, 2, nil)
+	m = NewMinimax(One, 2, nil)
 	js.Global().Set("minimax", js.FuncOf(minimax))
 	js.Global().Set("allMoves", js.FuncOf(allMoves))
 	js.Global().Set("buildTime", js.ValueOf(buildTime))
