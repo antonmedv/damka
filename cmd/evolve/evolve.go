@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-const depth = 2
+const depth = 4
 const defaultPopSize = 60
 
 var popSize = -1
