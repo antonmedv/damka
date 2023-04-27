@@ -12,8 +12,15 @@ func TestNewNetwork(t *testing.T) {
 }
 
 func TestNetwork_Evaluate(t *testing.T) {
-	net := NewNetworkWithOne()
+	net := One
 	b := NewBoard()
-	assert.Equal(t, 1, net.Evaluate(b, net.NewNodes()))
+	assert.Equal(t, 1.0, net.Evaluate(b, net.NewNodes()))
 	assert.Equal(t, -1.0, net.Evaluate(b.Transpose(), net.NewNodes()))
+}
+
+func TestNetwork_Evaluate_Zero(t *testing.T) {
+	net := Zero
+	b := NewBoard()
+	assert.Equal(t, .0, net.Evaluate(b, net.NewNodes()))
+	assert.Equal(t, .0, net.Evaluate(b.Transpose(), net.NewNodes()))
 }

@@ -11,8 +11,8 @@ import (
 )
 
 var (
-	player1 = NetHeiOay
-	player2 = NetHeiOay
+	player1 = Zero
+	player2 = One
 )
 
 func worker(ctx context.Context, work chan Board, output chan [2]Status) {
