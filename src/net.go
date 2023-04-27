@@ -40,6 +40,13 @@ func NewNetwork() *Network {
 	}
 }
 
+func (net *Network) Copy() *Network {
+	newNet := NewNetwork()
+	copy(newNet.Weights, net.Weights)
+	copy(newNet.Biases, net.Biases)
+	return newNet
+}
+
 func NewNetworkWithOne() *Network {
 	net := NewNetwork()
 	for i := range net.Weights {
