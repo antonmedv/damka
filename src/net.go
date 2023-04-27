@@ -1,6 +1,8 @@
 package src
 
-import "math"
+import (
+	"math"
+)
 
 var defaultLayers = []int{128, 32, 32, 1}
 var (

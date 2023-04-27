@@ -42,8 +42,7 @@ func main() {
 		})
 
 		printStats(population)
-		println()
-		printPopulation(population)
+		//printPopulation(population)
 
 		// Save 50% of the population
 		population = population[:popSize/2]
@@ -70,19 +69,31 @@ func printStats(population []*Breed) {
 	best := population[0]
 	unluckiest := population[popSize/2]
 	worst := population[popSize-1]
+	childrenCount := map[string]int{}
 	for i, breed := range population {
+		childrenCount[breed.Parent]++
 		if i < popSize/2 {
 			if breed.Age > long.Age {
 				long = breed
 			}
 		}
 	}
+	mostChildren := ""
+	for _, breed := range population {
+		if childrenCount[breed.Name] > childrenCount[mostChildren] {
+			mostChildren = breed.Name
+		}
+	}
 	best.print(w, "Best Score")
 	long.print(w, "Longest Survivor")
 	unluckiest.print(w, "Unluckiest")
 	worst.print(w, "Worst Score")
-
 	_ = w.Flush()
+
+	println()
+	if mostChildren != "" {
+		fmt.Printf("Most children: %v (%v)\n", mostChildren, childrenCount[mostChildren])
+	}
 }
 
 func playGames(games []game) {
