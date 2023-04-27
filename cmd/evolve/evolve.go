@@ -24,7 +24,7 @@ func main() {
 	var population []*Breed
 
 	// Generate name of the population by current date and time.
-	fileName := time.Now().Format("2006-01-02T150405.json")
+	fileName := time.Now().Format("2006-01-02T15_04_05.json")
 
 	// If argument is provided, use it as a name of the population.
 	if len(os.Args) > 1 {
@@ -120,6 +120,14 @@ func printStats(population []*Breed) {
 	_ = w.Flush()
 
 	println()
+	draws := 0
+	total := 0
+	for _, breed := range population {
+		total += breed.Wins + breed.Draws + breed.Losses
+		draws += breed.Draws
+	}
+	total /= 2
+	fmt.Printf("Draws: %v (%v%%)\n", draws, draws*100/total)
 	if mostChildren != "" {
 		fmt.Printf("Most children: %v (%v)\n", mostChildren, childrenCount[mostChildren])
 	}
