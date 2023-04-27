@@ -25,7 +25,7 @@ func main() {
 	var population []*Breed
 
 	// Generate name of the population by current date and time.
-	fileName := time.Now().Format("2006-01-02T15:04:05.json")
+	fileName := time.Now().Format("2006-01-02T150405.json")
 
 	// If argument is provided, use it as a name of the population.
 	if len(os.Args) > 1 {
