@@ -2,25 +2,50 @@ package main
 
 import (
 	. "checkers/src"
+	"encoding/json"
 	"fmt"
 	"math"
 	"math/rand"
 	"os"
+	"path"
 	"runtime"
 	"sort"
 	"strings"
 	"sync"
 	"text/tabwriter"
+	"time"
 )
 
-const depth = 4
-const popSize = 60
+const depth = 2
+const defaultPopSize = 60
+
+var popSize = -1
 
 func main() {
-	population := make([]*Breed, popSize)
-	for i := range population {
-		population[i] = createRandomBreed()
+	var population []*Breed
+
+	// Generate name of the population by current date and time.
+	fileName := time.Now().Format("2006-01-02T15:04:05.json")
+
+	// If argument is provided, use it as a name of the population.
+	if len(os.Args) > 1 {
+		fileName = path.Base(os.Args[1])
+		buf, err := os.ReadFile(os.Args[1])
+		if err != nil {
+			panic(err)
+		}
+		err = json.Unmarshal(buf, &population)
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		population = make([]*Breed, defaultPopSize)
+		for i := range population {
+			population[i] = createRandomBreed()
+		}
 	}
+
+	popSize = len(population)
 
 	for gen := 1; ; gen++ {
 		println("# Generation", gen)
@@ -55,6 +80,18 @@ func main() {
 		// Breed the population back to 100%
 		for _, breed := range population {
 			population = append(population, breed.mutate())
+		}
+
+		// Marshal the population to JSON
+		buf, err := json.Marshal(population)
+		if err != nil {
+			panic(err)
+		}
+
+		// Save to the file
+		err = os.WriteFile("data/"+fileName, buf, 0644)
+		if err != nil {
+			panic(err)
 		}
 
 		print("\n\n")
