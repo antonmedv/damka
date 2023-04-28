@@ -17,6 +17,7 @@ import (
 
 const depth = 4
 const defaultPopSize = 60
+const gamesPerMatch = 10
 
 func main() {
 	var population []*Breed
@@ -38,7 +39,7 @@ func main() {
 	for gen := 1; ; gen++ {
 		println("# Generation", gen)
 
-		groups := groupPopulation(population, 7)
+		groups := groupPopulation(population, gamesPerMatch)
 		games := make([]game, 0)
 		for _, group := range groups {
 			for i := 0; i < len(group); i++ {

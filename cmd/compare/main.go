@@ -10,8 +10,8 @@ import (
 	. "checkers/src"
 )
 
-var player1 = NetHeiOay
-var player2 = LoadPopulation("data/latest.json")[18].Net
+var player1 = NetZero
+var player2 = LoadPopulation("data/first.json")[3].Net
 
 func main() {
 	//player1, player2 = player2, player1
