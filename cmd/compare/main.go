@@ -10,28 +10,11 @@ import (
 	. "checkers/src"
 )
 
-var player1 = GenerateRandomNetwork()
-var player2 = Zero
-
-func worker(ctx context.Context, work chan Board, output chan [2]Status) {
-	p1 := NewMinimax(player1, 4, nil)
-	p2 := NewMinimax(player2, 4, nil)
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case b := <-work:
-			s1 := Play(b, p1, p2, false)
-			s2 := Play(b, p2, p1, false)
-			fmt.Printf("\n%v\np1 plays white: %v\np2 plays white: %v\n\n", b, s1, s2)
-			output <- [2]Status{s1, -s2}
-		}
-	}
-}
+var player1 = NetZero
+var player2 = LoadPopulation("data/latest.json")[0].Net
 
 func main() {
-	player2 = LoadPopulation("data/6h.json")[0].Net
-
+	//player1, player2 = player2, player1
 	b := NewBoard()
 	boards := []Board{
 		b,
@@ -91,6 +74,22 @@ func main() {
 			i++
 			fmt.Printf("%v%% %v/%v (%v, %v, %v)\n", i*100/len(boards), i, len(boards), wins1, wins2, draws)
 			wg.Done()
+		}
+	}
+}
+
+func worker(ctx context.Context, work chan Board, output chan [2]Status) {
+	p1 := NewMinimax(player1, 4, nil)
+	p2 := NewMinimax(player2, 4, nil)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case b := <-work:
+			s1 := Play(b, p1, p2, false)
+			s2 := Play(b, p2, p1, false)
+			fmt.Printf("\n%v\np1 plays white: %v\np2 plays white: %v\n\n", b, s1, s2)
+			output <- [2]Status{s1, -s2}
 		}
 	}
 }

@@ -10,9 +10,14 @@ var (
 	MinusInf = math.Inf(-1)
 )
 
+type Net interface {
+	NewNodes() []float64
+	Evaluate(board Board, nodes []float64) float64
+}
+
 type Minimax struct {
 	MaxDepth int
-	Net      *Network
+	Net      Net
 	Cache    map[Params]Score
 	DB       EndgameDB
 
@@ -56,7 +61,7 @@ func (s Score) Byte() byte {
 	return b
 }
 
-func NewMinimax(net *Network, maxDepth int, db EndgameDB) *Minimax {
+func NewMinimax(net Net, maxDepth int, db EndgameDB) *Minimax {
 	return &Minimax{
 		Net:      net,
 		MaxDepth: maxDepth,
