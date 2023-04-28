@@ -124,7 +124,7 @@ func printStats(population []*Breed) {
 		draws += breed.Draws
 	}
 	total /= 2
-	fmt.Printf("Draws: %v (%v%%)\n", draws, draws*100/total)
+	fmt.Printf("Draws: %v%%\n", draws*100/total)
 	if mostChildren != "" {
 		fmt.Printf("Most children: %v (%v)\n", mostChildren, childrenCount[mostChildren])
 	}
