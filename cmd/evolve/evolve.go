@@ -18,8 +18,6 @@ import (
 const depth = 4
 const defaultPopSize = 60
 
-var popSize = -1
-
 func main() {
 	var population []*Breed
 
@@ -36,8 +34,6 @@ func main() {
 			population[i] = CreateRandomBreed()
 		}
 	}
-
-	popSize = len(population)
 
 	for gen := 1; ; gen++ {
 		println("# Generation", gen)
@@ -62,7 +58,7 @@ func main() {
 		//printPopulation(population)
 
 		// Save 50% of the population
-		population = population[:popSize/2]
+		population = population[:len(population)/2]
 
 		for i := range population {
 			population[i].Age++
@@ -96,12 +92,12 @@ func printStats(population []*Breed) {
 
 	long := population[0]
 	best := population[0]
-	unluckiest := population[popSize/2]
-	worst := population[popSize-1]
+	unluckiest := population[len(population)/2]
+	worst := population[len(population)-1]
 	childrenCount := map[string]int{}
 	for i, breed := range population {
 		childrenCount[breed.Parent]++
-		if i < popSize/2 {
+		if i < len(population)/2 {
 			if breed.Age > long.Age {
 				long = breed
 			}
