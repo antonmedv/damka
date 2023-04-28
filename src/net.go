@@ -62,10 +62,20 @@ func (net *Network) NewNodes() []float64 {
 	return make([]float64, net.NodesLen)
 }
 
-func (net *Network) Evaluate(b Board, nodes []float64) float64 {
+func (net *Network) InputLayer(b Board, nodes []float64) float64 {
+	sum := .0
 	if b.IsWhiteTurn() {
 		for i := Pos(0); i < 32; i++ {
-			nodes[i] = value(b.Get(Pos(i)), 3)
+			sum += value(b.Get(i), 3)
+		}
+	} else {
+		for i := Pos(0); i < 32; i++ {
+			sum += -value(b.Get(i), 3)
+		}
+	}
+
+	if b.IsWhiteTurn() {
+		for i := Pos(0); i < 32; i++ {
 			switch b.Get(i) {
 			case WhiteMan:
 				nodes[i] = 1
@@ -93,6 +103,12 @@ func (net *Network) Evaluate(b Board, nodes []float64) float64 {
 		}
 	}
 
+	return sum
+}
+
+func (net *Network) Evaluate(b Board, nodes []float64) float64 {
+	sum := net.InputLayer(b, nodes)
+
 	prevOffset := 0
 	nodesOffset := 128
 	weightIndex := 0
@@ -114,13 +130,13 @@ func (net *Network) Evaluate(b Board, nodes []float64) float64 {
 		nodesOffset += net.Layers[l]
 	}
 
-	rate := nodes[len(nodes)-1]
+	rate := math.Tanh(nodes[len(nodes)-1] + sum)
 
 	if b.IsBlackTurn() {
 		rate = -rate
 	}
 
-	return math.Tanh(rate)
+	return rate
 }
 
 func GenerateRandomNetwork() *Network {

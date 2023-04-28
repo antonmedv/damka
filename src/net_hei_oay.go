@@ -1,6 +1,8 @@
 package src
 
-import "math"
+import (
+	"math"
+)
 
 type NetworkHeiOay struct {
 	Layers   []int
