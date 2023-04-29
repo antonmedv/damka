@@ -4,17 +4,36 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"os"
 	"runtime"
+	"strconv"
 	"sync"
 
 	. "checkers/src"
 )
 
 var player1 = NetZero
-var player2 = LoadPopulation("data/first.json")[3].Net
+var player2 = Zero
 
 func main() {
-	//player1, player2 = player2, player1
+	if len(os.Args) != 4 {
+		fmt.Printf("Usage: %v <versus> <population> <index>\n", os.Args[0])
+		return
+	}
+	switch os.Args[1] {
+	case "zero":
+		player1 = NetZero
+	case "hei":
+		player1 = NetHeiOay
+	default:
+		panic("Unknown versus (zero, hei)")
+	}
+	index, err := strconv.Atoi(os.Args[3])
+	if err != nil {
+		panic(err)
+	}
+	player2 = LoadPopulation(os.Args[2])[index].Net
+
 	b := NewBoard()
 	boards := []Board{
 		b,
@@ -72,7 +91,7 @@ func main() {
 				}
 			}
 			i++
-			fmt.Printf("%v%% %v/%v (%v, %v, %v)\n", i*100/len(boards), i, len(boards), wins1, wins2, draws)
+			ProgressBar(i, len(boards), 50, fmt.Sprintf("(%v, %v, %v)", wins1, wins2, draws))
 			wg.Done()
 		}
 	}
@@ -88,7 +107,7 @@ func worker(ctx context.Context, work chan Board, output chan [2]Status) {
 		case b := <-work:
 			s1 := Play(b, p1, p2, false)
 			s2 := Play(b, p2, p1, false)
-			fmt.Printf("\n%v\np1 plays white: %v\np2 plays white: %v\n\n", b, s1, s2)
+			// fmt.Printf("\n%v\np1 plays white: %v\np2 plays white: %v\n\n", b, s1, s2)
 			output <- [2]Status{s1, -s2}
 		}
 	}

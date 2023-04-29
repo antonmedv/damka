@@ -9,7 +9,6 @@ import (
 	"path"
 	"runtime"
 	"sort"
-	"strings"
 	"sync"
 	"text/tabwriter"
 	"time"
@@ -82,6 +81,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+		fmt.Printf("Saved to %v\n", fileName)
 
 		print("\n\n")
 	}
@@ -145,11 +145,9 @@ func playGames(games []game) {
 	for i, g := range games {
 		wg.Add(1)
 		gameChan <- g
-		progressBar(i+1, len(games), 50)
+		ProgressBar(i+1, len(games), 50, "")
 	}
-
-	// Clear progress bar
-	print("\r", strings.Repeat(" ", 60), "\r")
+	ClearProgressBar()
 
 	close(gameChan)
 	wg.Wait()
@@ -217,21 +215,6 @@ func shufflePopulation(population []*Breed) {
 		j := rand.Intn(i + 1)
 		population[i], population[j] = population[j], population[i]
 	}
-}
-
-func progressBar(current, total, width int) {
-	progress := float64(current) / float64(total)
-	filled := int(progress * float64(width))
-	empty := width - filled
-
-	fmt.Printf("\r[")
-	for i := 0; i < filled; i++ {
-		fmt.Print("=")
-	}
-	for i := 0; i < empty; i++ {
-		fmt.Print(" ")
-	}
-	fmt.Printf("] %3.0f%% ", progress*100)
 }
 
 func printPopulation(population []*Breed) {
