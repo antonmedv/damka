@@ -2,18 +2,25 @@ package src
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
+func TestNewNetwork_Simple(t *testing.T) {
+	net := NewNetwork([]int{128, 1})
+	assert.Len(t, net.Weights, 128)
+	assert.Len(t, net.Biases, 1)
+}
+
 func TestNewNetwork(t *testing.T) {
-	net := NewNetwork()
+	net := NewNetwork([]int{128, 32, 32, 1})
 	assert.Len(t, net.Weights, 5152)
 	assert.Len(t, net.Biases, 65)
 }
 
 func TestNetwork_Input_on_NewBoard(t *testing.T) {
-	net := NewNetwork()
+	net := NewNetwork([]int{128, 32, 32, 1})
 	b := NewBoard()
 
 	x := net.NewNodes()
@@ -24,7 +31,7 @@ func TestNetwork_Input_on_NewBoard(t *testing.T) {
 }
 
 func TestNetwork_Input_SomeBoard(t *testing.T) {
-	net := NewNetwork()
+	net := NewNetwork([]int{128, 32, 32, 1})
 	b := Board{}.
 		Set(Parse("a7"), X).
 		Set(Parse("c5"), O).
