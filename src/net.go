@@ -139,7 +139,7 @@ func (net *Network) Evaluate(b Board, nodes []float64) float64 {
 }
 
 func GenerateRandomNetwork() *Network {
-	net := NewNetwork([]int{128, 32, 32, 1})
+	net := NewNetwork([]int{128, 1})
 	for i := range net.Weights {
 		net.Weights[i] = rand.Float64()*2 - 1
 	}
