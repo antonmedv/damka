@@ -1,0 +1,421 @@
+import {computer, workerInfo} from './src/ai'
+import {Cell, isQueen, ofPlayer, onCell, opponent, Piece, Player} from './src/game'
+import {$, domReady, randomInt} from './src/utils'
+import {
+  apply,
+  copy,
+  createEmptyBoardState,
+  createStartGameState,
+  generateAllPossibleMoves,
+  indexFromString,
+  State
+} from './src/state'
+import './style.css'
+import {VERSION} from './src/version'
+
+domReady(main)
+
+function main() {
+  workerInfo().then(v => {
+    let version = document.createElement('div')
+    version.style.fontFamily = 'monospace'
+    version.style.fontSize = '12px'
+    version.style.position = 'fixed'
+    version.style.left = '5px'
+    version.style.bottom = '5px'
+    version.style.zIndex = '-1'
+    version.textContent = `${VERSION} ${v}`
+    document.body.appendChild(version)
+  })
+
+  let letters = $('#board .letters')!
+  let lines = $('#board .lines')!
+  let board = $('#board .playground')!
+  let historyNode = $('#history')!
+  let newGameButton = $('#new-game')!
+  let backButton = $('#back')!
+  let forwardButton = $('#forward')!
+
+  // O_o
+  let currentState = createStartGameState()
+  let currentDepth = 6
+  let currentNet = 0
+
+  let history: [string | undefined, State][] = []
+  let historyPointer = 1
+
+  function resize() {
+    let {height} = board.getBoundingClientRect()
+    board.style.width = height + 'px'
+  }
+
+  window.addEventListener('load', resize)
+  window.addEventListener('resize', resize)
+
+  for (let i = 0; i < 8; i++) {
+    let lineNumber = document.createElement('div')
+    lineNumber.textContent = (8 - i).toString()
+    lines.appendChild(lineNumber)
+    let letter = document.createElement('div')
+    letter.textContent = String.fromCharCode(97 + i)
+    letters.appendChild(letter)
+  }
+  for (let i = 0; i < 64; i++) {
+    let x = i % 8
+    let y = 8 - Math.floor(i / 8)
+    let pos = `${'abcdefgh'[x]}${y}`
+    let cell = document.createElement('div')
+    cell.dataset.number = pos
+    cell.className = x % 2 == y % 2 ? 'light' : 'dark'
+    board.appendChild(cell)
+  }
+
+  function put(a: string | number, b: Piece) {
+    return currentState.cells[typeof a === 'number' ? a : indexFromString(a)] = b
+  }
+
+  function putRandomPieces(count: number, cell: Cell) {
+    while (count > 0) {
+      let pos
+      do {
+        pos = randomInt(0, 31)
+      } while (currentState.cells[pos] !== ' ')
+      currentState.cells[pos] = cell
+      count--
+    }
+  }
+  function newGame() {
+    currentState = createStartGameState()
+
+    // currentState = createEmptyBoardState()
+    // put('e1', 'O')
+    // put('b8', 'X')
+    // put('d8', 'X')
+    // put('f8', 'X')
+    //putRandomPieces(3, 'X')
+
+    currentNet = Math.floor(Math.random() * 10)
+    console.log('currentNet', currentNet)
+
+    history = [[undefined, currentState]]
+    historyPointer = 1
+    render(currentState)
+    historyNode.innerHTML = ''
+  }
+
+  newGame()
+  render(currentState)
+
+  newGameButton.addEventListener('click', () => {
+    newGame()
+  })
+
+  board.addEventListener('click', event => {
+    let piece = event.target as HTMLElement
+    if (!piece.classList.contains('piece')) {
+      return
+    }
+
+    let from = piece.parentElement!.dataset.number!
+    console.log(from)
+  })
+
+  let jumpMoves: string[] = []
+  dragAndDrop(board, (from, to): boolean => {
+    if (from == to) {
+      return false
+    }
+    let allPossibleMoves = generateAllPossibleMoves(currentState, 'white')
+    // Normal move
+    {
+      let move = `${from}-${to}`
+      if (allPossibleMoves.includes(move)) {
+        step(currentState, move)
+        jumpMoves = []
+        return true
+      }
+    }
+    if (jumpMoves.length == 0) {
+      jumpMoves = [from]
+    }
+    jumpMoves.push(to)
+    let move = jumpMoves.join(':')
+    if (allPossibleMoves.includes(move)) {
+      jumpMoves = []
+      step(currentState, move)
+      return true
+    }
+    let currentPossibleMoves = allPossibleMoves.filter(m => m.startsWith(move))
+    if (currentPossibleMoves.length == 0) {
+      jumpMoves = []
+      return false
+    }
+    return true
+  })
+
+  function step(prev: State, move: string) {
+    setTimeout(() => {
+      let state = copy(prev)
+      let moves = generateAllPossibleMoves(prev, 'white')
+
+      if (moves.includes(move)) {
+        apply(state, move)
+        currentState = state
+        render(state)
+        recordHistory('white', move, state)
+
+        let newState = copy(currentState)
+        computer(newState, 'black', currentDepth, currentNet).then(move => {
+          if (move) {
+            animateMove(move, () => {
+              if (move) {
+                apply(newState, move)
+                currentState = newState
+                render(newState)
+                recordHistory('black', move, newState)
+                highlightMove(move)
+              }
+            })
+          }
+        })
+      }
+    }, 0)
+  }
+
+  function autoplay(player: Player = 'white') {
+    let state = copy(currentState)
+    computer(copy(state), player, currentDepth, currentNet).then(move => {
+      if (move) {
+        apply(state, move)
+        currentState = state
+        render(state)
+        recordHistory(player, move, state)
+        highlightMove(move)
+        setTimeout(() => autoplay(opponent(player)), 100)
+      }
+    })
+  }
+
+  $('#autoplay')?.addEventListener('click', e => {
+    autoplay()
+  })
+
+  function render(state: State) {
+    removeHighlight()
+    for (let i = 0; i < board.children.length; i++) {
+      board.children[i].innerHTML = ''
+    }
+    for (let i = 0; i < state.cells.length; i++) {
+      let p = onCell(state.cells[i])
+      if (p) {
+        let piece = document.createElement('div')
+        piece.className = 'piece ' + ofPlayer(p)
+        if (isQueen(p)) {
+          piece.classList.add('queen')
+        }
+        let k = boardIndex(i)
+        board.children[k].appendChild(piece)
+      }
+    }
+  }
+
+  function boardIndex(i: number) {
+    if (Math.floor(i / 4) % 2 == 0)
+      return 1 + i * 2
+    else
+      return i * 2
+  }
+
+  function addMove(player: Player, move: string | undefined, i: number) {
+    // if (player == 'white') {
+    //   let line = document.createElement('div')
+    //   line.textContent = i.toString()
+    //   historyNode.appendChild(line)
+    // }
+    let moveNode = document.createElement('div')
+    moveNode.textContent = move || '?'
+    historyNode.appendChild(moveNode)
+  }
+
+  function recordHistory(player: Player, move: string | undefined, state: State) {
+    historyPointer++
+    if (historyPointer < history.length) {
+      history[historyPointer] = [move, state]
+      history.splice(historyPointer + 1)
+      historyNode.innerHTML = ''
+      for (let [move] of history.slice(1)) {
+        addMove(player, move, historyPointer / 2)
+      }
+    } else {
+      history.push([move, state])
+      addMove(player, move, historyPointer / 2)
+    }
+  }
+
+  function highlightCurrentMoveInHistory() {
+    let oldNode = $('.history-pointer')
+    if (oldNode) {
+      oldNode.classList.remove('history-pointer')
+    }
+    let i = historyPointer - 1
+    if (0 <= i && i < historyNode.children.length) {
+      historyNode.children[i].classList.add('history-pointer')
+    }
+  }
+
+  function removeHighlight() {
+    let h = board.querySelectorAll('.highlight')
+    for (let i = 0; i < h.length; i++) {
+      h[i].classList.remove('highlight')
+    }
+  }
+
+  function highlightMove(move: string) {
+    removeHighlight()
+    let cells = move.split(/[\-:]/)
+    for (let cell of cells) {
+      let node = board.querySelector(`[data-number="${cell}"]`)
+      if (node) {
+        node.classList.add('highlight')
+      }
+    }
+  }
+
+  function setStateFromHistory() {
+    highlightCurrentMoveInHistory()
+    let [move, state] = history[historyPointer]
+    currentState = state
+    render(state)
+    if (move) {
+      highlightMove(move)
+    }
+  }
+
+  backButton.addEventListener('click', () => {
+    if (historyPointer > 0) {
+      historyPointer--
+      setStateFromHistory()
+    }
+  })
+
+  forwardButton.addEventListener('click', () => {
+    if (historyPointer + 1 < history.length) {
+      historyPointer++
+      setStateFromHistory()
+    }
+  })
+
+  function animateMove(move: string, cb: () => void) {
+    let cells = move.split(/[\-:]/)
+    if (cells.length == 0) {
+      return
+    }
+    let piece = board.querySelector(`[data-number="${cells.shift()}"] .piece`) as HTMLElement
+    if (!piece) {
+      return
+    }
+
+    let rect = piece.getBoundingClientRect()
+    piece.style.position = 'absolute'
+    piece.style.zIndex = '1000'
+    piece.style.top = rect.top + 'px'
+    piece.style.left = rect.left + 'px'
+    piece.style.width = rect.width + 'px'
+    piece.style.height = rect.height + 'px'
+    piece.classList.add('animating')
+    document.body.appendChild(piece)
+
+    function reset() {
+      piece.parentElement!.removeChild(piece)
+    }
+
+    let goTo = () => {
+      let cell = board.querySelector(`[data-number="${cells.shift()}"]`) as HTMLElement
+      if (cell) {
+        let cr = cell.getBoundingClientRect()
+        piece.style.top = (cr.top + cr.height / 2 - rect.height / 2) + 'px'
+        piece.style.left = (cr.left + cr.width / 2 - rect.height / 2) + 'px'
+      }
+      if (cells.length > 0) {
+        setTimeout(goTo, 200)
+      } else {
+        setTimeout(() => {
+          reset()
+          cb()
+        }, 200)
+      }
+    }
+    goTo()
+  }
+}
+
+function dragAndDrop(board: HTMLElement, onDrop: (from: string, to: string) => boolean) {
+  board.addEventListener('dragstart', () => false)
+  board.addEventListener('mousedown', event => {
+    let piece = event.target as HTMLElement
+    if (!piece.classList.contains('piece')) {
+      return
+    }
+
+    let parent = piece.parentElement!
+    let from = parent.dataset.number!
+    let rect = piece.getBoundingClientRect()
+    let shiftX = event.clientX - rect.left
+    let shiftY = event.clientY - rect.top
+
+    function moveAt(pageX: number, pageY: number) {
+      piece.style.left = pageX - shiftX + 'px'
+      piece.style.top = pageY - shiftY + 'px'
+    }
+
+    piece.style.width = rect.width + 'px'
+    piece.style.height = rect.height + 'px'
+    piece.style.position = 'absolute'
+    piece.style.zIndex = '1000'
+    moveAt(event.pageX, event.pageY)
+    document.body.appendChild(piece)
+
+    function reset() {
+      piece.style.position = ''
+      piece.style.zIndex = ''
+      piece.style.top = ''
+      piece.style.left = ''
+      piece.style.width = ''
+      piece.style.height = ''
+    }
+
+    function onMouseMove(event: MouseEvent) {
+      moveAt(event.pageX, event.pageY)
+    }
+
+    document.addEventListener('mousemove', onMouseMove)
+
+    piece.onmouseup = function () {
+      let rect = piece.getBoundingClientRect()
+      piece.hidden = true
+      let below = document.elementFromPoint(rect.x + rect.height / 2, rect.y + rect.width / 2)
+      piece.hidden = false
+
+      if (!below) {
+        return
+      }
+
+      let droppableBelow = below.closest('.playground > div') as HTMLElement
+      if (droppableBelow) {
+        let to = droppableBelow.dataset.number!
+        let canDrop = onDrop(from, to)
+        if (canDrop) {
+          droppableBelow.appendChild(piece)
+        } else {
+          parent.appendChild(piece)
+        }
+      } else {
+        parent.appendChild(piece)
+      }
+      reset()
+      document.removeEventListener('mousemove', onMouseMove)
+      piece.onmouseup = null
+    }
+  })
+}
+

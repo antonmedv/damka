@@ -1,0 +1,181 @@
+* {
+    margin: 0;
+    padding: 0;
+}
+
+*, *:before, *:after {
+    box-sizing: inherit;
+}
+
+body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    user-select: none;
+}
+
+button {
+    background-color: #fbeee0;
+    border-radius: 30px;
+    border: 2px solid #422800;
+    box-shadow: #422800 4px 4px 0 0;
+    color: #422800;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    line-height: 30px;
+    padding: 0 16px;
+    text-align: center;
+    text-decoration: none;
+    touch-action: manipulation;
+    user-select: none;
+    white-space: nowrap;
+}
+button:hover {
+    background-color: #fff;
+}
+button:active {
+    transform: translate(2px, 2px);
+    box-shadow: #422800 2px 2px 0 0;
+}
+
+main {
+    display: grid;
+    grid-template-columns: 130px auto auto;
+    grid-gap: 20px;
+    justify-content: center;
+    padding: 20px;
+}
+
+nav {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+nav button {
+    margin-bottom: 10px;
+}
+
+.board {
+    --size: calc(100vh - 60px);
+    background: #fecf9d;
+    display: inline-grid;
+    grid-template-areas: "lines playground" ". letters";
+    grid-template-columns: auto 1fr;
+    grid-template-rows: 1fr auto;
+    width: var(--size);
+    height: var(--size);
+    padding: 20px 20px 3px 5px;
+    z-index: 1;
+}
+
+.lines {
+    display: grid;
+    grid-area: lines;
+    grid-template: repeat(8, 1fr) / repeat(1, 1fr);
+    align-items: center;
+    width: 14px;
+}
+
+.letters {
+    grid-area: letters;
+    display: grid;
+    grid-template: repeat(1, 1fr) / repeat(8, 1fr);
+    justify-items: center;
+    text-transform: uppercase;
+}
+
+.playground {
+    grid-area: playground;
+    margin: 0 auto;
+    border: 1px solid #87643e;
+    display: grid;
+    grid-template: repeat(8, 1fr) / repeat(8, 1fr);
+}
+
+.playground > div {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.playground > .light {
+    background-color: #fecf9d;
+}
+
+.playground > .dark {
+    background-color: #d28b46;
+}
+
+.playground > .highlight:after {
+    position: absolute;
+    content: "";
+    width: 100%;
+    height: 100%;
+    border: 5px #fff869 solid;
+}
+
+.piece {
+    width: 80%;
+    height: 80%;
+    border-radius: 100%;
+    cursor: pointer;
+    z-index: 1;
+}
+
+.piece.animating {
+    transition: all linear 200ms;
+}
+
+.piece.white {
+    border: 5px #bfbebe solid;
+    background: whitesmoke;
+}
+
+.piece.black {
+    border: 5px #454545 solid;
+    background: #6f6f6f;
+}
+
+.piece.queen {
+    background-image: url("./assets/queen.png");
+    background-repeat: no-repeat;
+    background-size: 80%;
+    background-position: center center;
+}
+
+.history-wrap {
+    display: grid;
+    grid-template-rows: 1fr auto;
+    height: 100%;
+    width: 300px;
+}
+
+.history {
+    overflow-y: scroll;
+    padding: 10px;
+    font-family: monospace;
+    font-size: 18px;
+    background: #f8ebd9;
+}
+
+.history-pointer {
+    background-color: beige;
+}
+
+.controls {
+    display: flex;
+    justify-content: center;
+}
+
+.controls button {
+    margin-top: 10px;
+    margin-right: 10px;
+}
+
+.controls button:last-child {
+    margin-right: 0;
+}
