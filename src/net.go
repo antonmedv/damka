@@ -122,14 +122,18 @@ func (net *Network) Evaluate(b Board, nodes []float64) float64 {
 			a += net.Biases[biasIndex]
 			biasIndex++
 
-			// Activation function.
-			nodes[nodesOffset+i] = math.Max(0, a)
+			// Inject sum of input values to last layer.
+			if l == len(net.Layers)-1 {
+				a += sum
+			}
+
+			nodes[nodesOffset+i] = math.Tanh(a)
 		}
 		prevOffset = nodesOffset
 		nodesOffset += net.Layers[l]
 	}
 
-	rate := math.Tanh(nodes[len(nodes)-1] + sum)
+	rate := nodes[len(nodes)-1]
 
 	if b.IsBlackTurn() {
 		rate = -rate
