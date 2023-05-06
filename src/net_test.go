@@ -19,6 +19,12 @@ func TestNewNetwork(t *testing.T) {
 	assert.Len(t, net.Biases, 65)
 }
 
+func TestNewNetworkAlt(t *testing.T) {
+	net := NewNetwork([]int{128, 12, 8, 1})
+	assert.Equal(t, len(net.Weights), 1640)
+	assert.Equal(t, len(net.Biases), 21)
+}
+
 func TestNetwork_Input_on_NewBoard(t *testing.T) {
 	net := NewNetwork([]int{128, 32, 32, 1})
 	b := NewBoard()

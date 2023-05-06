@@ -5,7 +5,7 @@ import (
 	"math/rand"
 )
 
-var defaultLayers = []int{128, 32, 32, 1}
+var defaultLayers = []int{128, 12, 8, 1}
 var (
 	Zero = NewNetwork([]int{128, 32, 32, 1})
 	One  = NewNetworkWithOne([]int{128, 32, 32, 1})
@@ -143,7 +143,7 @@ func (net *Network) Evaluate(b Board, nodes []float64) float64 {
 }
 
 func GenerateRandomNetwork() *Network {
-	net := NewNetwork([]int{128, 1})
+	net := NewNetwork(defaultLayers)
 	for i := range net.Weights {
 		net.Weights[i] = rand.Float64()*2 - 1
 	}
