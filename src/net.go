@@ -6,10 +6,7 @@ import (
 )
 
 var defaultLayers = []int{128, 12, 8, 1}
-var (
-	Zero = NewNetwork([]int{128, 32, 32, 1})
-	One  = NewNetworkWithOne([]int{128, 32, 32, 1})
-)
+var Zero = NewNetwork([]int{128, 1})
 
 type Network struct {
 	Layers   []int
@@ -47,14 +44,6 @@ func (net *Network) Copy() *Network {
 	copy(newNet.Weights, net.Weights)
 	copy(newNet.Biases, net.Biases)
 	return newNet
-}
-
-func NewNetworkWithOne(layers []int) *Network {
-	net := NewNetwork(layers)
-	for i := range net.Weights {
-		net.Weights[i] = 1
-	}
-	return net
 }
 
 func (net *Network) NewNodes() []float64 {

@@ -12,8 +12,8 @@ import (
 	. "checkers/src"
 )
 
-var player1 = NetZero
-var player2 = Zero
+var player1 Net = NetZero
+var player2 Net = Zero
 
 func main() {
 	if len(os.Args) != 4 {
@@ -25,6 +25,8 @@ func main() {
 		player1 = NetZero
 	case "hei":
 		player1 = NetHeiOay
+	case "random":
+		player1 = GenerateRandomNetwork()
 	default:
 		panic("Unknown versus (zero, hei)")
 	}
