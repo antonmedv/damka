@@ -143,7 +143,7 @@ nav button {
 }
 
 .piece.queen {
-    background-image: url("./assets/queen.png");
+    background-image: url("./img/queen.png");
     background-repeat: no-repeat;
     background-size: 80%;
     background-position: center center;
