@@ -3,8 +3,6 @@ package src
 import (
 	"fmt"
 	"math"
-	"math/rand"
-	"time"
 )
 
 var (
@@ -12,9 +10,14 @@ var (
 	MinusInf = math.Inf(-1)
 )
 
+type Net interface {
+	NewNodes() []float64
+	Evaluate(board Board, nodes []float64) float64
+}
+
 type Minimax struct {
 	MaxDepth int
-	Net      Network
+	Net      Net
 	Cache    map[Params]Score
 	DB       EndgameDB
 
@@ -58,7 +61,7 @@ func (s Score) Byte() byte {
 	return b
 }
 
-func NewMinimax(net Network, maxDepth int, db EndgameDB) *Minimax {
+func NewMinimax(net Net, maxDepth int, db EndgameDB) *Minimax {
 	return &Minimax{
 		Net:      net,
 		MaxDepth: maxDepth,
@@ -75,33 +78,54 @@ func (m *Minimax) ClearStats() {
 	m.DBHits = 0
 }
 
-// weightedRandomPick returns a random index from the given slice of rates,
-// with the probability of selecting each index being proportional to its rate.
-func weightedRandomPick(rates []float64) int {
-	// Compute the sum of all rates.
-	total := 0.0
-	for _, rate := range rates {
-		total += rate
-	}
+func (m *Minimax) BestMove(b Board, debug bool) (Board, float64, int) {
+	possibleMoves := b.AllMoves()
+	lose := len(possibleMoves) == 0
 
-	// Generate a random value between 0 and the total sum.
-	rand.Seed(time.Now().UnixNano())
-	r := rand.Float64() * total
-
-	// Find the index corresponding to the random value.
-	runningTotal := 0.0
-	for i, rate := range rates {
-		runningTotal += rate
-		if r <= runningTotal {
-			return i
+	if lose {
+		if b.IsWhiteTurn() {
+			panic("white lost")
+		} else {
+			panic("black lost")
 		}
+	} else if b.IsDraw() {
+		panic("draw")
 	}
 
-	return len(rates) - 1
+	if b.IsWhiteTurn() {
+		// Return the best move.
+		bestRate := MinusInf
+		var bestMove Board
+		for _, move := range possibleMoves {
+			rate, _ := m.Minimax(move, m.MaxDepth, MinusInf, Inf)
+			if rate > bestRate {
+				bestRate = rate
+				bestMove = move
+			}
+			if debug {
+				fmt.Printf("white %s: (%.10f)\n", b.GenerateMoveName(move), rate)
+			}
+		}
+		return bestMove, bestRate, 144
+	} else {
+		// Return the best move.
+		bestRate := Inf
+		var bestMove Board
+		for _, move := range possibleMoves {
+			rate, _ := m.Minimax(move, m.MaxDepth, MinusInf, Inf)
+			if rate < bestRate {
+				bestRate = rate
+				bestMove = move
+			}
+			if debug {
+				fmt.Printf("black %s: (%.10f)\n", b.GenerateMoveName(move), rate)
+			}
+		}
+		return bestMove, bestRate, -144
+	}
 }
 
-// BestMove returns the best move and its rate.
-func (m *Minimax) BestMove(b Board, debug bool) (Board, float64, int) {
+func (m *Minimax) BestRandomMove(b Board, debug bool) (Board, float64) {
 	possibleMoves := b.AllMoves()
 	lose := len(possibleMoves) == 0
 
@@ -121,21 +145,22 @@ func (m *Minimax) BestMove(b Board, debug bool) (Board, float64, int) {
 		moves := make([]Board, len(possibleMoves))
 		for i, move := range possibleMoves {
 			rate, steps := m.Minimax(move, m.MaxDepth, MinusInf, Inf)
+			rate = 1 + rate
 			rates[i] = rate
 			moves[i] = move
 			if debug {
 				fmt.Printf("white %s: (%.10f %d)\n", b.GenerateMoveName(move), rate, steps)
 			}
 		}
-		// Choose a random move based on the rates.
 		index := weightedRandomPick(rates)
-		return moves[index], rates[index], 42
+		return moves[index], rates[index]
 	} else {
 		// Collect rates and moves in separate slices.
 		rates := make([]float64, len(possibleMoves))
 		moves := make([]Board, len(possibleMoves))
 		for i, move := range possibleMoves {
 			rate, steps := m.Minimax(move, m.MaxDepth, MinusInf, Inf)
+			rate = 1 + -rate
 			rates[i] = rate
 			moves[i] = move
 			if debug {
@@ -144,7 +169,7 @@ func (m *Minimax) BestMove(b Board, debug bool) (Board, float64, int) {
 		}
 		// Choose a random move based on the rates.
 		index := weightedRandomPick(rates)
-		return moves[index], rates[index], -42
+		return moves[index], rates[index]
 	}
 }
 

@@ -25,11 +25,7 @@ func (s Status) String() string {
 	}
 }
 
-type Player interface {
-	BestMove(b Board, debug bool) (Board, float64, int)
-}
-
-func Play(b Board, player, opponent Player, debug bool) Status {
+func Play(b Board, player, opponent *Minimax, debug bool) Status {
 	moveNumber := 0
 	for {
 		if debug {

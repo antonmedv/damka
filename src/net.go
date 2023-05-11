@@ -1,6 +1,9 @@
 package src
 
-import "math"
+import (
+	"math"
+	"math/rand"
+)
 
 type Network struct {
 	Layers   []int
@@ -10,7 +13,7 @@ type Network struct {
 	K        float64
 }
 
-func NewNetwork(layers []int) Network {
+func NewNetwork(layers []int) *Network {
 	weightsLen := 0
 	prevLayerLen := 0
 	nodesLen := 0
@@ -26,7 +29,7 @@ func NewNetwork(layers []int) Network {
 		biasesLen += layers[i]
 	}
 
-	return Network{
+	return &Network{
 		Layers:   layers,
 		Weights:  make([]float64, weightsLen),
 		Biases:   make([]float64, biasesLen),
@@ -35,18 +38,18 @@ func NewNetwork(layers []int) Network {
 	}
 }
 
-func (net Network) NewNodes() []float64 {
+func (net *Network) NewNodes() []float64 {
 	return make([]float64, net.NodesLen)
 }
 
-func (net Network) Evaluate(b Board, nodes []float64) float64 {
+func (net *Network) Evaluate(b Board, nodes []float64) float64 {
 	if b.IsWhiteTurn() {
 		for i := Pos(0); i < 32; i++ {
-			nodes[i] = value(b.Get(i), net.K)
+			nodes[i] = net.value(b.Get(i))
 		}
 	} else {
 		for i := 31; i >= 0; i-- {
-			nodes[31-i] = -value(b.Get(Pos(i)), net.K)
+			nodes[31-i] = -net.value(b.Get(Pos(i)))
 		}
 	}
 
@@ -90,7 +93,15 @@ func (net Network) Evaluate(b Board, nodes []float64) float64 {
 	return rate
 }
 
-func value(p Piece, k float64) float64 {
+func (net *Network) Copy() *Network {
+	netCopy := NewNetwork(net.Layers)
+	copy(netCopy.Weights, net.Weights)
+	copy(netCopy.Biases, net.Biases)
+	netCopy.K = net.K
+	return netCopy
+}
+
+func (net *Network) value(p Piece) float64 {
 	switch p {
 	case Empty:
 		return 0
@@ -99,17 +110,28 @@ func value(p Piece, k float64) float64 {
 	case BlackMan:
 		return -1
 	case WhiteKing:
-		return k
+		return net.K
 	case BlackKing:
-		return -k
+		return -net.K
 	default:
 		panic("invalid piece")
 	}
 }
 
-var NetZero = NewNetwork([]int{32, 40, 10, 1})
+func GenerateRandomNetwork(layers []int) *Network {
+	net := NewNetwork(layers)
+	for i := range net.Weights {
+		net.Weights[i] = rand.Float64()*2 - 1
+	}
+	for i := range net.Biases {
+		net.Biases[i] = rand.Float64()*2 - 1
+	}
+	return net
+}
 
-var NetHeiOay = func() Network {
+var Zero = NewNetwork([]int{32, 40, 10, 1})
+
+var HeiOay = func() *Network {
 	net := NewNetwork([]int{32, 40, 10, 1})
 	net.Weights = []float64{
 		63.81044624682337,

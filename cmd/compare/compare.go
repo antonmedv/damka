@@ -4,34 +4,26 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"os"
 	"runtime"
+	"strconv"
+	"strings"
 	"sync"
 
 	. "checkers/src"
 )
 
-var (
-	player1 = NetHeiOay
-	player2 = NetHeiOay
-)
-
-func worker(ctx context.Context, work chan Board, output chan [2]Status) {
-	p1 := NewMinimax(player1, 4, nil)
-	p2 := NewMinimax(player2, 4, nil)
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case b := <-work:
-			s1 := Play(b, p1, p2, false)
-			s2 := Play(b, p2, p1, false)
-			fmt.Printf("\n%v\np1 plays white: %v\np2 plays white: %v\n\n", b, s1, s2)
-			output <- [2]Status{s1, -s2}
-		}
-	}
-}
+var player1 Net = Zero
+var player2 Net = Zero
 
 func main() {
+	if len(os.Args) != 3 {
+		fmt.Printf("Usage: %v <player1> <player2>\n", os.Args[0])
+		return
+	}
+	player1 = loadPlayer(os.Args[1])
+	player2 = loadPlayer(os.Args[2])
+
 	b := NewBoard()
 	boards := []Board{
 		b,
@@ -89,8 +81,24 @@ func main() {
 				}
 			}
 			i++
-			fmt.Printf("%v%% %v/%v (%v, %v, %v)\n", i*100/len(boards), i, len(boards), wins1, wins2, draws)
+			ProgressBar(i, len(boards), 50, fmt.Sprintf("(%v, %v, %v)", wins1, wins2, draws))
 			wg.Done()
+		}
+	}
+}
+
+func worker(ctx context.Context, work chan Board, output chan [2]Status) {
+	p1 := NewMinimax(player1, 4, nil)
+	p2 := NewMinimax(player2, 4, nil)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case b := <-work:
+			s1 := Play(b, p1, p2, false)
+			s2 := Play(b, p2, p1, false)
+			// fmt.Printf("\n%v\np1 plays white: %v\np2 plays white: %v\n\n", b, s1, s2)
+			output <- [2]Status{s1, -s2}
 		}
 	}
 }
@@ -116,4 +124,24 @@ func scheduler(ctx context.Context, input chan Board, work chan Board) {
 			}
 		}
 	}
+}
+
+func loadPlayer(name string) Net {
+	switch name {
+	case "zero":
+		return Zero
+	case "hei":
+		return HeiOay
+	case "random":
+		return GenerateRandomNetwork([]int{32, 40, 10, 1})
+	}
+	parts := strings.Split(os.Args[2], ":")
+	if len(parts) != 2 {
+		panic("Expected <player.json>:<index>")
+	}
+	index, err := strconv.Atoi(parts[1])
+	if err != nil {
+		panic(err)
+	}
+	return LoadPopulation(parts[0])[index].Net
 }
