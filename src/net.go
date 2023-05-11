@@ -45,11 +45,11 @@ func (net *Network) NewNodes() []float64 {
 func (net *Network) Evaluate(b Board, nodes []float64) float64 {
 	if b.IsWhiteTurn() {
 		for i := Pos(0); i < 32; i++ {
-			nodes[i] = value(b.Get(i), net.K)
+			nodes[i] = net.value(b.Get(i))
 		}
 	} else {
 		for i := 31; i >= 0; i-- {
-			nodes[31-i] = -value(b.Get(Pos(i)), net.K)
+			nodes[31-i] = -net.value(b.Get(Pos(i)))
 		}
 	}
 
@@ -101,7 +101,7 @@ func (net *Network) Copy() *Network {
 	return netCopy
 }
 
-func value(p Piece, k float64) float64 {
+func (net *Network) value(p Piece) float64 {
 	switch p {
 	case Empty:
 		return 0
@@ -110,9 +110,9 @@ func value(p Piece, k float64) float64 {
 	case BlackMan:
 		return -1
 	case WhiteKing:
-		return k
+		return net.K
 	case BlackKing:
-		return -k
+		return -net.K
 	default:
 		panic("invalid piece")
 	}
