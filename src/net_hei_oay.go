@@ -2,6 +2,7 @@ package src
 
 import (
 	"math"
+	"math/rand"
 )
 
 type NetworkHeiOay struct {
@@ -12,7 +13,7 @@ type NetworkHeiOay struct {
 	K        float64
 }
 
-func NewNetworkHeiOay(layers []int) NetworkHeiOay {
+func NewNetworkHeiOay(layers []int) *NetworkHeiOay {
 	weightsLen := 0
 	prevLayerLen := 0
 	nodesLen := 0
@@ -28,7 +29,7 @@ func NewNetworkHeiOay(layers []int) NetworkHeiOay {
 		biasesLen += layers[i]
 	}
 
-	return NetworkHeiOay{
+	return &NetworkHeiOay{
 		Layers:   layers,
 		Weights:  make([]float64, weightsLen),
 		Biases:   make([]float64, biasesLen),
@@ -37,11 +38,11 @@ func NewNetworkHeiOay(layers []int) NetworkHeiOay {
 	}
 }
 
-func (net NetworkHeiOay) NewNodes() []float64 {
+func (net *NetworkHeiOay) NewNodes() []float64 {
 	return make([]float64, net.NodesLen)
 }
 
-func (net NetworkHeiOay) Evaluate(b Board, nodes []float64) float64 {
+func (net *NetworkHeiOay) Evaluate(b Board, nodes []float64) float64 {
 	if b.IsWhiteTurn() {
 		for i := Pos(0); i < 32; i++ {
 			nodes[i] = value(b.Get(i), net.K)
@@ -92,6 +93,14 @@ func (net NetworkHeiOay) Evaluate(b Board, nodes []float64) float64 {
 	return rate
 }
 
+func (net *NetworkHeiOay) Copy() *NetworkHeiOay {
+	netCopy := NewNetworkHeiOay(net.Layers)
+	copy(netCopy.Weights, net.Weights)
+	copy(netCopy.Biases, net.Biases)
+	netCopy.K = net.K
+	return netCopy
+}
+
 func value(p Piece, k float64) float64 {
 	switch p {
 	case Empty:
@@ -109,9 +118,20 @@ func value(p Piece, k float64) float64 {
 	}
 }
 
+func GenerateRandomNetwork(layers []int) *NetworkHeiOay {
+	net := NewNetworkHeiOay(layers)
+	for i := range net.Weights {
+		net.Weights[i] = rand.Float64()*2 - 1
+	}
+	for i := range net.Biases {
+		net.Biases[i] = rand.Float64()*2 - 1
+	}
+	return net
+}
+
 var NetZero = NewNetworkHeiOay([]int{32, 40, 10, 1})
 
-var NetHeiOay = func() NetworkHeiOay {
+var NetHeiOay = func() *NetworkHeiOay {
 	net := NewNetworkHeiOay([]int{32, 40, 10, 1})
 	net.Weights = []float64{
 		63.81044624682337,

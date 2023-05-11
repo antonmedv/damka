@@ -16,7 +16,7 @@ type Breed struct {
 	Parent string
 	Age    int
 	Gen    int
-	Net    *Network
+	Net    *NetworkHeiOay
 	Score  float64
 	Wins   int
 	Losses int
@@ -24,8 +24,8 @@ type Breed struct {
 	Sigma  []float64
 }
 
-func CreateRandomBreed() *Breed {
-	net := GenerateRandomNetwork()
+func CreateRandomBreed(layers []int) *Breed {
+	net := GenerateRandomNetwork(layers)
 	sigma := make([]float64, len(net.Weights)+len(net.Biases))
 	for i := range sigma {
 		sigma[i] = .05

@@ -1,6 +1,7 @@
 package src_test
 
 import (
+	"fmt"
 	"math"
 	"testing"
 
@@ -14,7 +15,38 @@ func TestNewNetworkHeiOay(t *testing.T) {
 	assert.Len(t, net.Biases, 51)
 }
 
-func TestNetworkHeiOay_Evaluate(t *testing.T) {
+func TestNetwork_Evaluate_on_NewBoard(t *testing.T) {
+	net := NewNetworkHeiOay([]int{32, 40, 10, 1})
+	b := NewBoard()
+
+	x := net.NewNodes()
+	sum := net.Evaluate(b, x)
+
+	assert.Equal(t, .0, sum)
+	assert.Equal(t, "[-1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]", fmt.Sprint(x))
+}
+
+func TestNetwork_Evaluate_SomeBoard(t *testing.T) {
+	net := GenerateRandomNetwork([]int{32, 40, 10, 1})
+	b := Board{}.
+		Set(Parse("a7"), X).
+		Set(Parse("c5"), O).
+		Set(Parse("e5"), X).
+		Set(Parse("h2"), WhiteMan).
+		Set(Parse("h4"), BlackMan)
+
+	x := net.NewNodes()
+	xSum := net.Evaluate(b, x)
+
+	d := b.Transpose()
+	y := net.NewNodes()
+	ySum := net.Evaluate(d, y)
+
+	assert.Equal(t, xSum, ySum)
+	assert.Equal(t, x, y)
+}
+
+func TestNetworkHeiOay_Evaluate_Zero(t *testing.T) {
 	net := NewNetworkHeiOay([]int{32, 40, 10, 1})
 	b := Board{}.
 		Set(0, WhiteMan).

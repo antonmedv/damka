@@ -1,7 +1,6 @@
 package src
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -25,17 +24,6 @@ func TestNewNetworkAlt(t *testing.T) {
 	assert.Equal(t, len(net.Biases), 21)
 }
 
-func TestNetwork_Input_on_NewBoard(t *testing.T) {
-	net := NewNetwork([]int{128, 32, 32, 1})
-	b := NewBoard()
-
-	x := net.NewNodes()
-	sum := net.InputLayer(b, x)
-
-	assert.Equal(t, .0, sum)
-	assert.Equal(t, "[0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]", fmt.Sprint(x))
-}
-
 func TestNetwork_Input_SomeBoard(t *testing.T) {
 	net := NewNetwork([]int{128, 32, 32, 1})
 	b := Board{}.
@@ -54,13 +42,6 @@ func TestNetwork_Input_SomeBoard(t *testing.T) {
 
 	assert.Equal(t, xSum, ySum)
 	assert.Equal(t, x, y)
-}
-
-func TestNetwork_Evaluate(t *testing.T) {
-	net := One
-	b := NewBoard()
-	assert.Equal(t, 1.0, net.Evaluate(b, net.NewNodes()))
-	assert.Equal(t, -1.0, net.Evaluate(b.Transpose(), net.NewNodes()))
 }
 
 func TestNetwork_Evaluate_Zero(t *testing.T) {
