@@ -16,7 +16,7 @@ type Breed struct {
 	Parent string
 	Age    int
 	Gen    int
-	Net    *NetworkHeiOay
+	Net    *Network
 	Score  float64
 	Wins   int
 	Losses int

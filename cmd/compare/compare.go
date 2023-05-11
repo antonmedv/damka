@@ -13,7 +13,7 @@ import (
 	. "checkers/src"
 )
 
-var player1 Net = NetZero
+var player1 Net = Zero
 var player2 Net = Zero
 
 func main() {
@@ -129,9 +129,9 @@ func scheduler(ctx context.Context, input chan Board, work chan Board) {
 func loadPlayer(name string) Net {
 	switch name {
 	case "zero":
-		return NetZero
+		return Zero
 	case "hei":
-		return NetHeiOay
+		return HeiOay
 	case "random":
 		return GenerateRandomNetwork()
 	}
