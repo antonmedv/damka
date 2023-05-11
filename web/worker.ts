@@ -14,8 +14,11 @@ const worker = {
   buildTime(): string | undefined {
     return global.buildTime
   },
-  minimax(state: Board, depth: number): [number, number] {
-    return global.minimax(state, depth)
+  popName(index: number): [number, number] {
+    return global.popName(index)
+  },
+  minimax(state: Board, depth: number, index: number): [number, number] {
+    return global.minimax(state, depth, index)
   },
   allMoves(state: Board): string[] {
     return global.allMoves(state)

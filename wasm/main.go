@@ -4,6 +4,7 @@ package main
 
 import (
 	_ "embed"
+	"encoding/json"
 	"fmt"
 	"math"
 	"syscall/js"
@@ -11,18 +12,34 @@ import (
 	. "checkers/src"
 )
 
-var (
-	buildTime = "unset"
+var buildTime = "unset"
 
-	m *Minimax
-)
+//go:embed data.json
+var data []byte
+
+var m *Minimax
+var population []*Breed
 
 func main() {
-	m = NewMinimax(HeiOay, 8, nil)
+	err := json.Unmarshal(data, &population)
+	if err != nil {
+		panic(err)
+	}
+	js.Global().Set("popName", js.FuncOf(popName))
 	js.Global().Set("minimax", js.FuncOf(minimax))
 	js.Global().Set("allMoves", js.FuncOf(allMoves))
 	js.Global().Set("buildTime", js.ValueOf(buildTime))
 	<-make(chan bool)
+}
+
+func popName(this js.Value, args []js.Value) any {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println(r)
+		}
+	}()
+	breed := population[args[0].Int()]
+	return []any{breed.Name}
 }
 
 func minimax(this js.Value, args []js.Value) any {
@@ -31,12 +48,14 @@ func minimax(this js.Value, args []js.Value) any {
 			fmt.Println(r)
 		}
 	}()
+	breed := population[args[2].Int()]
+	maxDepth := args[1].Int()
+	m = NewMinimax(breed.Net, maxDepth, nil)
 	b := parseBoard(args[0])
-	depth := args[1].Int()
 	alpha := math.Inf(-1)
 	beta := math.Inf(1)
 	m.ClearStats()
-	rate, steps := m.Minimax(b, depth, alpha, beta)
+	rate, steps := m.Minimax(b, m.MaxDepth, alpha, beta)
 	// fmt.Printf("(cache_size:%v cache_hits:%v db_hits:%v)\n", len(m.Cache), m.CacheHits, m.DBHits)
 	if len(m.Cache) > 1_000_000 {
 		fmt.Println("cache cleared after", len(m.Cache), "entries")

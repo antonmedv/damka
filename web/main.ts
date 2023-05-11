@@ -50,10 +50,14 @@ async function main() {
   let newGameButton = $('#new-game')!
   let backButton = $('#back')!
   let forwardButton = $('#forward')!
+  let opponent = $('#opponent')!
+  let statusBar = $('#status')!
 
   // (.)(.)
   let currentState = createBoard()
   let depth = 6
+  let popIndex = 0
+  const popSize = 10
 
   let history: [string | undefined, Board][] = []
   let historyPointer = 1
@@ -86,13 +90,18 @@ async function main() {
 
   function newGame() {
     currentState = createBoardWithStartingPositions()
-    // currentState.cells[26] = 'o'
-    // currentState.cells[22] = 'x'
-    // currentState.cells[21] = 'x'
+    // currentState = createBoard()
+    // currentState.cells[1] = 'O'
+    // currentState.cells[31] = 'o'
+    // currentState.cells[9] = 'X'
+    // currentState.cells[21] = 'X'
+    // currentState.cells[22] = 'X'
     history = [[undefined, currentState]]
     historyPointer = 1
     render(currentState)
     historyNode.innerHTML = ''
+    popIndex = Math.floor(Math.random() * popSize)
+    pool.queue(w => w.popName(popIndex)).then(name => opponent.textContent = name)
   }
 
   newGame()
@@ -159,7 +168,7 @@ async function main() {
       let state = copy(b)
       apply(state, move)
       pool.queue(async w => {
-        let [rate, steps] = await w.minimax(state, depth)
+        let [rate, steps] = await w.minimax(state, depth, popIndex)
         console.log(`=> ${move} (${rate.toFixed(10)}, ${steps})`)
         if (b.turn == 'white') {
           if (rate > bestRate) {
@@ -200,7 +209,9 @@ async function main() {
         recordHistory('white', userMove, state)
 
         let newState = copy(currentState)
+        statusBar.textContent = 'Думаю...'
         let move = await bestMove(newState)
+        statusBar.textContent = ''
         if (move) {
           animateMove(move, () => {
             if (move) {
