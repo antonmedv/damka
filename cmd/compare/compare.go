@@ -7,6 +7,7 @@ import (
 	"os"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 
 	. "checkers/src"
@@ -16,25 +17,12 @@ var player1 Net = NetZero
 var player2 Net = Zero
 
 func main() {
-	if len(os.Args) != 4 {
-		fmt.Printf("Usage: %v <versus> <population> <index>\n", os.Args[0])
+	if len(os.Args) != 3 {
+		fmt.Printf("Usage: %v <player1> <player2>\n", os.Args[0])
 		return
 	}
-	switch os.Args[1] {
-	case "zero":
-		player1 = NetZero
-	case "hei":
-		player1 = NetHeiOay
-	case "random":
-		player1 = GenerateRandomNetwork()
-	default:
-		panic("Unknown versus (zero, hei)")
-	}
-	index, err := strconv.Atoi(os.Args[3])
-	if err != nil {
-		panic(err)
-	}
-	player2 = LoadPopulation(os.Args[2])[index].Net
+	player1 = loadPlayer(os.Args[1])
+	player2 = loadPlayer(os.Args[2])
 
 	b := NewBoard()
 	boards := []Board{
@@ -136,4 +124,24 @@ func scheduler(ctx context.Context, input chan Board, work chan Board) {
 			}
 		}
 	}
+}
+
+func loadPlayer(name string) Net {
+	switch name {
+	case "zero":
+		return NetZero
+	case "hei":
+		return NetHeiOay
+	case "random":
+		return GenerateRandomNetwork()
+	}
+	parts := strings.Split(os.Args[2], ":")
+	if len(parts) != 2 {
+		panic("Expected <player.json>:<index>")
+	}
+	index, err := strconv.Atoi(parts[1])
+	if err != nil {
+		panic(err)
+	}
+	return LoadPopulation(parts[0])[index].Net
 }
