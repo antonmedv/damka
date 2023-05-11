@@ -26,7 +26,7 @@ type Breed struct {
 
 func CreateRandomBreed(layers []int) *Breed {
 	net := GenerateRandomNetwork(layers)
-	sigma := make([]float64, len(net.Weights)+len(net.Biases))
+	sigma := make([]float64, len(net.Weights)+len(net.Biases)+1) // Plus one for K
 	for i := range sigma {
 		sigma[i] = .05
 	}
@@ -51,6 +51,13 @@ func (b *Breed) Mutate() *Breed {
 	}
 	for i := range net.Biases {
 		net.Biases[i] += sigma[len(net.Weights)+i] * rand.NormFloat64()
+	}
+	net.K += sigma[len(net.Weights)+len(net.Biases)] * rand.NormFloat64()
+	if net.K < 1 {
+		net.K = 1
+	}
+	if net.K > 3 {
+		net.K = 3
 	}
 
 	newBreed := &Breed{

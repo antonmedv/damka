@@ -13,8 +13,8 @@ import (
 	. "checkers/src"
 )
 
-var player1 Net = Zero
-var player2 Net = Zero
+var player1 = Zero
+var player2 = Zero
 
 func main() {
 	if len(os.Args) != 3 {
@@ -126,7 +126,7 @@ func scheduler(ctx context.Context, input chan Board, work chan Board) {
 	}
 }
 
-func loadPlayer(name string) Net {
+func loadPlayer(name string) *Network {
 	switch name {
 	case "zero":
 		return Zero

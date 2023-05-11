@@ -15,8 +15,8 @@ import (
 )
 
 const depth = 4
-const defaultPopSize = 60
-const gamesPerMatch = 10
+const defaultPopSize = 30
+const groupSize = 10
 
 func main() {
 	var population []*Breed
@@ -31,19 +31,20 @@ func main() {
 	} else {
 		population = make([]*Breed, defaultPopSize)
 		for i := range population {
-			population[i] = CreateRandomBreed()
+			population[i] = CreateRandomBreed([]int{32, 40, 10, 1})
 		}
 	}
 
 	for gen := 1; ; gen++ {
 		println("# Generation", gen)
 
-		groups := groupPopulation(population, gamesPerMatch)
+		groups := groupPopulation(population, groupSize)
 		games := make([]game, 0)
 		for _, group := range groups {
 			for i := 0; i < len(group); i++ {
 				for j := i + 1; j < len(group); j++ {
 					games = append(games, game{group[i], group[j]})
+					games = append(games, game{group[j], group[i]})
 				}
 			}
 		}
@@ -180,10 +181,10 @@ func (g game) play() {
 		g.white.Wins++
 		g.white.Score += 1
 		g.black.Losses++
-		g.black.Score -= 1
+		g.black.Score -= 2
 	case BlackWins:
 		g.white.Losses++
-		g.white.Score -= 1
+		g.white.Score -= 2
 		g.black.Wins++
 		g.black.Score += 1
 	case Draw:
