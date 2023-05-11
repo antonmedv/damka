@@ -5,7 +5,8 @@
     "dev": "vite",
     "build:wasm": "zx scripts/build.mjs",
     "build": "tsc && vite build --base=/шашки/",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "rsync -azP dist/ medv.io:/home/anton/medv.io/шашки/"
   },
   "devDependencies": {
     "threads": "^1.7.0",
