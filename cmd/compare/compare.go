@@ -133,7 +133,7 @@ func loadPlayer(name string) Net {
 	case "hei":
 		return HeiOay
 	case "random":
-		return GenerateRandomNetwork()
+		return GenerateRandomNetwork([]int{32, 40, 10, 1})
 	}
 	parts := strings.Split(os.Args[2], ":")
 	if len(parts) != 2 {
