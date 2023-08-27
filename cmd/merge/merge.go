@@ -22,6 +22,10 @@ func main() {
 		population = append(population, LoadPopulation(arg)...)
 	}
 
+	for _, b := range population {
+		b.ClearStats()
+	}
+
 	gameChan := make(chan game)
 	var wg sync.WaitGroup
 
