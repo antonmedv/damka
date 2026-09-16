@@ -6,6 +6,7 @@
  */
 import type { Move } from '../game/types.ts'
 import { detailedOf } from '../engine/adapter.ts'
+import { dbLimit } from '../engine/db.ts'
 import { parsePos } from '../engine/position.ts'
 import { DRAW_SCORE } from '../engine/score.ts'
 import { createRng } from '../engine/random.ts'
@@ -40,6 +41,16 @@ export type ThinkResponse = {
   readonly ms: number
 }
 
+/**
+ * Sent to the worker once, before any request: what it should get ready.
+ * Kept apart from `ThinkRequest` by the field, so the worker can tell the
+ * two messages apart without a tag on every search.
+ */
+export type ThinkConfig = {
+  /** Whether to fetch the endgame tables at all; `?db=off` says no. */
+  readonly endgameDb: boolean
+}
+
 /** Posted by the worker when `think` throws (never for a live game). */
 export type ThinkFailure = {
   readonly id: number
@@ -56,6 +67,9 @@ export function thinkWith(
 ): ThinkResponse {
   const start = performance.now()
   const p = parsePos(request.position)
+  // What this persona is allowed to look up; the tables are shared, the
+  // permission is not.
+  dbLimit(persona.endgamePieces)
   const result = search(p.white, p.black, p.kings, p.side, p.plies, {
     depth: persona.depth,
     budgetMs: cappedMs(persona.budgetMs, request.budgetMs),

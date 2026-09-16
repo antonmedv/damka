@@ -7,11 +7,25 @@
  */
 import { cappedMs } from './limits.ts'
 import { personas } from './personas.ts'
-import type { ThinkFailure, ThinkRequest, ThinkResponse } from './think.ts'
+import type {
+  ThinkConfig,
+  ThinkFailure,
+  ThinkRequest,
+  ThinkResponse,
+} from './think.ts'
+
+/** What a fresh worker is told to get ready. */
+export const defaultConfig: ThinkConfig = { endgameDb: true }
 
 export interface Thinker {
   /** Resolves with the reply; rejects when the request is cancelled. */
   think(request: ThinkRequest): Promise<ThinkResponse>
+  /**
+   * Gets ready before the first request: the worker starts, which is also
+   * when it begins fetching the endgame tables. Optional, and safe to
+   * call more than once.
+   */
+  warmUp?(): void
   /** Drops every pending request and stops the search behind it. */
   cancel(): void
   /** Releases the worker; the thinker is not used afterwards. */
@@ -50,11 +64,20 @@ type Pending = {
  */
 export class WorkerThinker implements Thinker {
   private readonly create: () => WorkerLike
+  private readonly config: ThinkConfig
   private worker: WorkerLike | null = null
   private readonly pending = new Map<number, Pending>()
 
-  constructor(create: () => WorkerLike = createSearchWorker) {
+  constructor(
+    create: () => WorkerLike = createSearchWorker,
+    config: ThinkConfig = defaultConfig,
+  ) {
     this.create = create
+    this.config = config
+  }
+
+  warmUp(): void {
+    if (this.worker === null) this.spawn()
   }
 
   think(request: ThinkRequest): Promise<ThinkResponse> {
@@ -95,6 +118,9 @@ export class WorkerThinker implements Thinker {
     worker.onmessageerror = () => {
       this.fail('search worker sent an unreadable message')
     }
+    // Before anything else, so a worker that has just replaced a
+    // cancelled one gets its tables back.
+    worker.postMessage(this.config)
     this.worker = worker
     return worker
   }
@@ -152,6 +178,11 @@ export class LazyThinker implements Thinker {
     this.load = load
   }
 
+  warmUp(): void {
+    this.loading ??= this.load()
+    void this.loading.then((thinker) => thinker.warmUp?.())
+  }
+
   think(request: ThinkRequest): Promise<ThinkResponse> {
     this.loading ??= this.load()
     return this.loading.then((thinker) => thinker.think(request))
@@ -170,9 +201,9 @@ export class LazyThinker implements Thinker {
  * A worker where available, otherwise the calling thread with a short
  * budget: a full persona budget would freeze the page.
  */
-export function defaultThinker(): Thinker {
+export function defaultThinker(config: ThinkConfig = defaultConfig): Thinker {
   return typeof Worker === 'function'
-    ? new WorkerThinker()
+    ? new WorkerThinker(createSearchWorker, config)
     : new LazyThinker(() =>
         import('./direct.ts').then(
           (module) => new module.DirectThinker({ budgetMs: 100 }),

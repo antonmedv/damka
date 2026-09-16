@@ -6,6 +6,7 @@
  * tracked getter, which makes the same code 5–20x slower; do not compare
  * numbers from the two setups. Results live in docs/engine-bench.md.
  */
+import { readFileSync, readdirSync } from 'node:fs'
 import { fromBitPosition } from './adapter.ts'
 import { APPLIED, makeMove } from './apply.ts'
 import { RANK_1, lsb, popcount, reverse32 } from './bitboard.ts'
@@ -21,6 +22,7 @@ import { MAX_MOVES, MOVE_SLOTS, generate, generateDetailed } from './movegen.ts'
 import { perft } from './perft.ts'
 import { WHITE, initialBitPosition, parsePos } from './position.ts'
 import type { BitPosition } from './position.ts'
+import { dbAddSlice, dbClear, dbPieces, dbProbe, dbStats } from './db.ts'
 import { createRng, randomPlacement, randomWalk } from './random.ts'
 import { mailboxMoves, mailboxPerft } from './reference/mailbox.ts'
 import { search, searchStats } from './search.ts'
@@ -532,6 +534,90 @@ function benchSearch(): void {
   }
 }
 
+/*
+ * Endgame tables: what a probe costs, and what the search does with them
+ * on men-heavy roots, which is where they are read most and helped least.
+ * A search that reaches the tables at every leaf inflates far more blocks
+ * than it reads, so `inflates/s` is the number to watch: once it runs into
+ * the thousands the cache is thrashing and the node rate falls with it.
+ *
+ * Each root is searched twice and the second search is the one reported,
+ * because that is the state a game is in: the worker keeps its cache from
+ * one move to the next.
+ */
+const TABLE_DIR = 'public/db/'
+
+function loadTables(): number {
+  dbClear()
+  let slices = 0
+  for (const name of readdirSync(TABLE_DIR)) {
+    if (!name.endsWith('.bin')) continue
+    dbAddSlice(new Uint8Array(readFileSync(TABLE_DIR + name)))
+    slices++
+  }
+  return slices
+}
+
+/** Positions inside the tables, without a capture: what a probe sees. */
+function probeFixtures(count: number): BitPosition[] {
+  const rng = createRng(11)
+  const out: BitPosition[] = []
+  while (out.length < count) {
+    const p = randomPlacement(rng)
+    const pieces = popcount(p.white | p.black)
+    if (pieces === 0 || pieces > dbPieces()) continue
+    if (p.white === 0 || p.black === 0) continue
+    if (generate(p.white, p.black, p.kings, p.side, OUT, 0) === 0) continue
+    if (OUT[1] !== 0) continue
+    out.push(p)
+  }
+  return out
+}
+
+const TABLE_ROOTS: Record<string, BitPosition> = {
+  'six men': parsePos('W:Wc3,e3,g3:Bb6,d6,f6'),
+  'eight men': parsePos('W:Wb2,c3,e3,g3:Ba7,b6,d6,f6'),
+  'ten men': parsePos('W:Wb2,d2,c3,e3,g3:Ba7,c7,b6,d6,f6'),
+}
+
+function benchEndgame(): void {
+  const slices = loadTables()
+  const fixtures = probeFixtures(4096)
+  let at = 0
+  const result = measure('probe', () => {
+    const p = fixtures[at++ & 4095]!
+    sink ^= dbProbe(p.white, p.black, p.kings, p.side, p.plies)
+  })
+  report(`endgame tables: ${slices} slices, ${dbPieces()} pieces`, 'probe', [
+    result,
+  ])
+
+  console.log('\n## endgame tables: one second per root\n')
+  console.log('| root | tables | depth | Mnode/s | inflates/s |')
+  console.log('| --- | --- | ---: | ---: | ---: |')
+  for (const [name, p] of Object.entries(TABLE_ROOTS)) {
+    for (const on of [false, true]) {
+      if (on) loadTables()
+      else dbClear()
+      const limits = { depth: 64, budgetMs: 1000, margin: 0 }
+      ttClear()
+      sink ^= search(p.white, p.black, p.kings, p.side, p.plies, limits).m0
+      ttClear()
+      const before = dbStats().inflates
+      const start = performance.now()
+      const r = search(p.white, p.black, p.kings, p.side, p.plies, limits)
+      const ms = performance.now() - start
+      const inflates = dbStats().inflates - before
+      console.log(
+        `| ${name} | ${on ? 'on' : 'off'} | ${r.depth} |` +
+          ` ${format(r.nodes / ms / 1000)} | ${Math.round((inflates * 1000) / ms)} |`,
+      )
+      sink ^= r.m0
+    }
+  }
+  dbClear()
+}
+
 const GROUPS: ReadonlyArray<readonly [string, () => void]> = [
   ['generate', benchGenerate],
   ['makeMove', benchMakeMove],
@@ -540,6 +626,7 @@ const GROUPS: ReadonlyArray<readonly [string, () => void]> = [
   ['popcount', benchPopcount],
   ['evaluate', benchEvaluate],
   ['search', benchSearch],
+  ['endgame', benchEndgame],
 ]
 
 // `npm run bench -- evaluate` runs the groups whose name contains the word.

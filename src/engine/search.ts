@@ -14,6 +14,12 @@
  *   stays because it cuts about a tenth of the nodes in king endgames and
  *   costs nothing elsewhere: a repetition needs quiet king moves
  *   throughout, so only the last `plies` plies of the path are compared;
+ * - a position the endgame database knows is returned from it, as long as
+ *   no capture is on the board (the database leaves capture nodes as
+ *   don't-care because the search resolves them) and the node is not in
+ *   the capture search, where a probe costs more than it saves. A drawn
+ *   position keeps a squeezed evaluation (`drawnScore`), so the engine
+ *   holds its material where every move draws;
  * - captures are never evaluated: at `depth <= 0` every capture is still
  *   searched (the quiescence search), with no stand-pat because the
  *   capture is mandatory; it ends by itself since material shrinks. One
@@ -40,6 +46,7 @@
  */
 import { APPLIED, makeMove } from './apply.ts'
 import { popcount } from './bitboard.ts'
+import { DB_DRAW_BAND, DB_UNKNOWN, dbPieces, dbProbe } from './db.ts'
 import { evaluate } from './eval.ts'
 import { moveCaptureCount, movePromotes } from './move.ts'
 import { MAX_MOVES, MOVE_SLOTS, generate } from './movegen.ts'
@@ -111,6 +118,8 @@ const ORDER_KILLER = 1 << 20
 const ASPIRATION = [100, 250, 600]
 const ASPIRATION_FROM = 4
 const TIME_CHECK_MASK = 2047
+/** Shallowest depth that probes the endgame tables. */
+const DB_MIN_DEPTH = 1
 
 /* Root bookkeeping: the current iteration and the last completed one. */
 const ROOT_IDX = new Int32Array(MAX_MOVES)
@@ -392,6 +401,25 @@ function negamax(
     }
   }
   const captures = STACK[base + 1] !== 0
+  // The endgame database holds the exact value of the position, so the
+  // node ends here. Never with a capture on the board: captures are
+  // mandatory, and the generator leaves those entries as don't-care.
+  const dbMax = dbPieces()
+  // Not in the capture search: a probe costs about twenty evaluations, and
+  // a node one ply from a leaf reads the same value from its parent.
+  if (
+    depth >= DB_MIN_DEPTH &&
+    dbMax !== 0 &&
+    !captures &&
+    popcount(white | black) <= dbMax
+  ) {
+    const score = dbProbe(white, black, kings, side, plies)
+    if (score !== DB_UNKNOWN) {
+      return score === DRAW_SCORE
+        ? drawnScore(white, black, kings, side)
+        : score
+    }
+  }
   if (depth <= 0) {
     if (!captures) return evaluate(white, black, kings, side)
     depth = 0
@@ -479,6 +507,26 @@ function negamax(
     bestM1,
   )
   return best
+}
+
+/**
+ * Score of a position the database calls drawn. It is drawn whatever is
+ * played, so every move would score the same and the search would pick
+ * any of them - including one that throws a king away in front of the
+ * player. The evaluation is squeezed into a band far below the smallest
+ * database win, which keeps the verdict while still preferring to hold
+ * material and stay active.
+ */
+function drawnScore(
+  white: number,
+  black: number,
+  kings: number,
+  side: number,
+): number {
+  const score = evaluate(white, black, kings, side) >> 4
+  if (score > DB_DRAW_BAND) return DB_DRAW_BAND
+  if (score < -DB_DRAW_BAND) return -DB_DRAW_BAND
+  return score
 }
 
 function orderMoves(

@@ -17,7 +17,15 @@ describe('startFromQuery', () => {
       setup: untimedDefault,
       position: null,
       colorChoice: 'white',
+      endgameDb: true,
     })
+  })
+
+  it('turns the endgame tables off on request', () => {
+    expect(startFromQuery('?db=off').endgameDb).toBe(false)
+    expect(startFromQuery('?pos=W:WKa1:BKh8&db=off').endgameDb).toBe(false)
+    expect(startFromQuery('?db=on').endgameDb).toBe(true)
+    expect(startFromQuery('?pos=W:WKa1:BKh8').endgameDb).toBe(true)
   })
 
   it('starts on the game that was set up last', () => {
@@ -34,6 +42,7 @@ describe('startFromQuery', () => {
       },
       position: null,
       colorChoice: 'black',
+      endgameDb: true,
     })
   })
 

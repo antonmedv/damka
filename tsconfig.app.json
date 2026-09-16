@@ -4,7 +4,9 @@
     "target": "es2023",
     "lib": ["ES2023", "DOM"],
     "module": "esnext",
-    "types": ["vite/client", "vitest/globals"],
+    /* "node" is for the tests and the benchmarks, which live beside the
+       code they measure and read their fixtures off disk. */
+    "types": ["vite/client", "vitest/globals", "node"],
     "allowArbitraryExtensions": true,
     "skipLibCheck": true,
 

@@ -30,6 +30,17 @@ jobs:
 
       - run: npm run check
 
+      # The endgame tables in public/db come out of this generator, and
+      # the browser reads them with the same rules it was built from.
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: dbgen/go.mod
+          # Nothing to cache: the generator has no dependencies.
+          cache: false
+
+      - run: go test ./...
+        working-directory: dbgen
+
       - run: npm run build
         env:
           # GitHub Pages serves this repo from antonmedv.github.io/damka/.

@@ -53,6 +53,8 @@ export type GameScreenProps = {
   initialColor?: ColorChoice
   /** Source of computer moves; a worker by default. */
   thinker?: Thinker
+  /** Whether the computer may use the endgame tables; `?db=off` says no. */
+  endgameDb?: boolean
   /** Seed for each request; random by default, fixed in tests. */
   seed?: () => number
   /** Source of the monotonic time the clock runs on; fixed in tests. */
@@ -75,6 +77,7 @@ export function GameScreen({
     ? 'white'
     : initialSetup.humanColor,
   thinker,
+  endgameDb = true,
   seed = randomSeed,
   now = realNow,
   onFlipReady,
@@ -108,7 +111,7 @@ export function GameScreen({
   useGameOver(state, showResult)
   // Kept beside the setup, which only ever holds a colour that was rolled.
   const [colorChoice, setColorChoice] = useState<ColorChoice>(initialColor)
-  useComputerMove(state, dispatch, useThinker(thinker), seed, at)
+  useComputerMove(state, dispatch, useThinker(thinker, endgameDb), seed, at)
   useMoveSound(state)
   // Read once: every selector below that asks how the game stands would
   // otherwise generate the same position's legal moves all over again.
@@ -248,8 +251,8 @@ function useMoveSound(state: GameState): void {
  * disposing it on unmount would also run between StrictMode's doubled
  * effects and kill the first request.
  */
-function useThinker(given: Thinker | undefined): Thinker {
-  const [own] = useState<Thinker>(() => given ?? defaultThinker())
+function useThinker(given: Thinker | undefined, endgameDb: boolean): Thinker {
+  const [own] = useState<Thinker>(() => given ?? defaultThinker({ endgameDb }))
   return given ?? own
 }
 
@@ -275,6 +278,12 @@ function useComputerMove(
   const issued = useRef<{ id: number; forState: GameState } | null>(null)
   const failed = useRef<{ position: Position; count: number } | null>(null)
   const nextId = useRef(1)
+  // Start the worker before the first move is asked for: it fetches the
+  // endgame tables while the player is still thinking about theirs.
+  const opponentId = state.setup.opponentId
+  useEffect(() => {
+    if (isPersonaId(opponentId)) thinker.warmUp?.()
+  }, [thinker, opponentId])
   useEffect(() => {
     const pending = issued.current
     // The same state once more (StrictMode runs effects twice): nothing new.

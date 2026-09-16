@@ -1,8 +1,9 @@
 /**
  * Search parameters of the computer opponents. The evaluation knows
  * nothing about personas; strength differences live only here: how deep
- * or long the search runs and how far from the best move the pick may
- * stray. Numbers are starting points, checked by `npm run selfplay`.
+ * or long the search runs, how far from the best move the pick may stray,
+ * and how much endgame the persona has been taught. Numbers are starting
+ * points, checked by `npm run selfplay`.
  */
 import type { OpponentId } from './opponents.ts'
 
@@ -19,6 +20,15 @@ export type Persona = {
   readonly temperature: number
   /** Never answer faster than this; an instant reply feels wrong. */
   readonly minThinkMs: number
+  /**
+   * Pieces at or below which the persona may read the endgame tables. The
+   * tables are exact, so without a cap a kitten that blunders its way
+   * through the middlegame would convert every ending like a machine -
+   * the strongest endgame play in the game, from the weakest opponent.
+   * The cap keeps the ladder in one piece: a beginner mishandles endings
+   * too, and only the birds of prey know them cold.
+   */
+  readonly endgamePieces: number
 }
 
 export const personas: Readonly<Record<PersonaId, Persona>> = {
@@ -28,6 +38,7 @@ export const personas: Readonly<Record<PersonaId, Persona>> = {
     margin: 400,
     temperature: 250,
     minThinkMs: 250,
+    endgamePieces: 0,
   },
   hare: {
     depth: 4,
@@ -35,6 +46,8 @@ export const personas: Readonly<Record<PersonaId, Persona>> = {
     margin: 150,
     temperature: 60,
     minThinkMs: 300,
+    // A lone king against a lone king, and little more.
+    endgamePieces: 3,
   },
   fox: {
     depth: 64,
@@ -42,6 +55,7 @@ export const personas: Readonly<Record<PersonaId, Persona>> = {
     margin: 30,
     temperature: 15,
     minThinkMs: 400,
+    endgamePieces: 5,
   },
   owl: {
     depth: 64,
@@ -49,6 +63,7 @@ export const personas: Readonly<Record<PersonaId, Persona>> = {
     margin: 0,
     temperature: 1,
     minThinkMs: 500,
+    endgamePieces: 5,
   },
   raven: {
     depth: 64,
@@ -56,6 +71,7 @@ export const personas: Readonly<Record<PersonaId, Persona>> = {
     margin: 0,
     temperature: 0,
     minThinkMs: 500,
+    endgamePieces: 5,
   },
 }
 

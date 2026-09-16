@@ -14,12 +14,16 @@ export type Start = {
   readonly position: Position | null
   /** What the new game dialog preselects; 'random' survives a reload. */
   readonly colorChoice: ColorChoice
+  /** Whether the computer may use the endgame tables; `?db=off` turns
+   * them off, to see what the same search does without them. */
+  readonly endgameDb: boolean
 }
 
 export const defaultStart: Start = {
   setup: setupFrom(defaultPrefs),
   position: null,
   colorChoice: defaultPrefs.color,
+  endgameDb: true,
 }
 
 const COLORS: ReadonlyArray<Color | 'both'> = ['white', 'black', 'both']
@@ -30,6 +34,7 @@ const COLORS: ReadonlyArray<Color | 'both'> = ['white', 'black', 'both']
  *
  *     ?pos=W:Wd2:Bc3,e3,c5,e5,g3
  *     ?pos=W:Wc3:Bd4,d6&vs=fox&side=white
+ *     ?pos=W:WKa1,Kb2,Kc3:BKf4&vs=raven&side=black&db=off
  *
  * `pos` is the position literal of `parsePos` (side to move, white pieces,
  * black pieces, `K` for a king). `vs` is an opponent id and `side` is the
@@ -38,7 +43,9 @@ const COLORS: ReadonlyArray<Color | 'both'> = ['white', 'black', 'both']
  * been looked at, and for the same reason a position is never put on a
  * clock. Anything missing or malformed falls back to `prefs`, the game the
  * player set up last; a bad `pos` is reported on the console rather than
- * left to fail silently.
+ * left to fail silently. `db=off` keeps the endgame tables out of the
+ * worker, which is how the same position is compared with and without
+ * them.
  */
 export function startFromQuery(
   search: string,
@@ -49,11 +56,13 @@ export function startFromQuery(
   const position = positionOf(params.get('pos'))
   const side = colorOf(params.get('side'))
   const opponentId = opponentOf(params.get('vs'))
+  const endgameDb = params.get('db') !== 'off'
   if (position === null && side === null && opponentId === null) {
     return {
       setup: setupFrom(prefs, rng),
       position: null,
       colorChoice: prefs.color,
+      endgameDb,
     }
   }
   const wanted: GamePrefs = {
@@ -72,6 +81,7 @@ export function startFromQuery(
     setup: side === 'both' ? { ...setup, humanColor: 'both' } : setup,
     position,
     colorChoice: wanted.color,
+    endgameDb,
   }
 }
 

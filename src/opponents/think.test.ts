@@ -1,5 +1,7 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { readFileSync, readdirSync } from 'node:fs'
+import { afterAll, beforeEach, describe, expect, it } from 'vitest'
 import { fromBitPosition } from '../engine/adapter.ts'
+import { DB_WIN, dbAddSlice, dbClear } from '../engine/db.ts'
 import { moveKey } from '../engine/move.ts'
 import { formatPos, initialBitPosition, parsePos } from '../engine/position.ts'
 import { createRng } from '../engine/random.ts'
@@ -17,6 +19,7 @@ const loose: Persona = {
   margin: 150,
   temperature: 60,
   minThinkMs: 0,
+  endgamePieces: 0,
 }
 const strict: Persona = { ...personas.owl, depth: 6, budgetMs: 0 }
 
@@ -172,5 +175,42 @@ describe('pickRoot', () => {
     // Weights 1 and e^-1: the best is chosen about 73% of the time.
     expect(first / total).toBeGreaterThan(0.68)
     expect(first / total).toBeLessThan(0.78)
+  })
+})
+
+describe('the endgame tables a persona may read', () => {
+  /** Three kings against one: won, but too slowly for a short search. */
+  const long = 'W:WKa1,Kb2,Kc3:BKf4:0'
+  const taught: Persona = {
+    ...personas.fox,
+    depth: 4,
+    budgetMs: 0,
+    margin: 0,
+    temperature: 0,
+    minThinkMs: 0,
+    endgamePieces: 5,
+  }
+  const untaught: Persona = { ...taught, endgamePieces: 0 }
+
+  function score(persona: Persona): number {
+    return thinkWith(
+      { id: 1, position: long, persona: 'fox', seed: 1 },
+      persona,
+    ).score
+  }
+
+  afterAll(() => {
+    dbClear()
+  })
+
+  it('decides the ending for one and not the other', () => {
+    dbClear()
+    for (const name of readdirSync('public/db/')) {
+      if (name.endsWith('.bin')) dbAddSlice(readFileSync(`public/db/${name}`))
+    }
+    // The win needs more plies than this search looks, so only the tables
+    // can find it.
+    expect(score(taught)).toBeGreaterThan(DB_WIN - 64)
+    expect(score(untaught)).toBeLessThan(DB_WIN - 64)
   })
 })

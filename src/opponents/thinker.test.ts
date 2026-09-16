@@ -4,7 +4,7 @@ import { formatPos, initialBitPosition } from '../engine/position.ts'
 import { fromBitPosition } from '../engine/adapter.ts'
 import { legalMoves } from '../game/moves.ts'
 import { personas } from './personas.ts'
-import type { ThinkRequest, ThinkResponse } from './think.ts'
+import type { ThinkConfig, ThinkRequest, ThinkResponse } from './think.ts'
 import { DirectThinker } from './direct.ts'
 import { LazyThinker, WorkerThinker, defaultThinker } from './thinker.ts'
 import type { WorkerLike } from './thinker.ts'
@@ -22,9 +22,19 @@ class FakeWorker implements WorkerLike {
   onmessageerror: ((event: MessageEvent) => void) | null = null
   onerror: ((event: ErrorEvent) => void) | null = null
   readonly sent: ThinkRequest[] = []
+  /** The configuration a fresh worker is always told first. */
+  config: ThinkConfig | null = null
   terminated = false
 
   postMessage(message: unknown): void {
+    if (
+      message !== null &&
+      typeof message === 'object' &&
+      'endgameDb' in message
+    ) {
+      this.config = message as ThinkConfig
+      return
+    }
     this.sent.push(message as ThinkRequest)
   }
 
@@ -101,15 +111,37 @@ describe('LazyThinker', () => {
 })
 
 describe('WorkerThinker', () => {
-  function setup() {
+  function setup(config?: ThinkConfig) {
     const workers: FakeWorker[] = []
     const thinker = new WorkerThinker(() => {
       const worker = new FakeWorker()
       workers.push(worker)
       return worker
-    })
+    }, config)
     return { workers, thinker }
   }
+
+  it('passes the configuration to every worker it starts', () => {
+    const { workers, thinker } = setup({ endgameDb: false })
+    thinker.warmUp()
+    expect(workers[0]!.config).toEqual({ endgameDb: false })
+    thinker.dispose()
+  })
+
+  it('warms up once and keeps the worker for the first request', async () => {
+    vi.useFakeTimers()
+    const { workers, thinker } = setup()
+    thinker.warmUp()
+    thinker.warmUp()
+    expect(workers).toHaveLength(1)
+    expect(workers[0]!.config).toEqual({ endgameDb: true })
+    const reply = thinker.think(request)
+    expect(workers).toHaveLength(1)
+    expect(workers[0]!.sent).toHaveLength(1)
+    workers[0]!.reply(replyFor(request))
+    await vi.advanceTimersByTimeAsync(personas.hare.minThinkMs)
+    await expect(reply).resolves.toMatchObject({ id: 1 })
+  })
 
   it('posts the request and resolves with the reply', async () => {
     vi.useFakeTimers()

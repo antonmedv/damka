@@ -23,6 +23,19 @@ describe('personas', () => {
     expect(owl.budgetMs).toBeLessThan(raven.budgetMs)
     expect(raven.margin).toBe(0)
   })
+
+  it('hands out the endgame tables along the same ladder', () => {
+    const { kitten, hare, fox, owl, raven } = personas
+    // The tables are exact, so a persona that reads them plays that part
+    // of the game perfectly, and the weakest are kept away from them.
+    // Where the ladder stops climbing is a matter of taste; that it never
+    // goes down is not.
+    expect(kitten.endgamePieces).toBe(0)
+    expect(kitten.endgamePieces).toBeLessThan(hare.endgamePieces)
+    expect(hare.endgamePieces).toBeLessThan(fox.endgamePieces)
+    expect(fox.endgamePieces).toBeLessThanOrEqual(owl.endgamePieces)
+    expect(owl.endgamePieces).toBe(raven.endgamePieces)
+  })
 })
 
 describe('budgetFor', () => {

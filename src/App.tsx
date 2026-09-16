@@ -18,6 +18,7 @@ export function App() {
       initialSetup={start.setup}
       initialPosition={start.position}
       initialColor={start.colorChoice}
+      endgameDb={start.endgameDb}
     />
   )
 }

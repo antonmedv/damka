@@ -6,6 +6,7 @@ import { formatMove } from '../game/notation.ts'
 import { legalMoves } from '../game/moves.ts'
 import { timeControlById } from '../game/timeControl.ts'
 import { MATE_BOUND } from '../engine/score.ts'
+import { DB_DRAW_BAND, DB_WIN, DB_WIN_MIN } from '../engine/db.ts'
 import {
   canRedoGame,
   canUndoGame,
@@ -996,6 +997,18 @@ describe('gameReducer: offers', () => {
 
   it('offers the way out of a game it has already won', () => {
     expect(currentOffer(judged('W:WKa1:BKh8', MATE_BOUND))).toBe('resign')
+  })
+
+  it('offers it for an ending the tables have decided too', () => {
+    // A database win scores below every mate and above every evaluation.
+    expect(currentOffer(judged('W:WKa1:BKh8', DB_WIN))).toBe('resign')
+    expect(currentOffer(judged('W:WKa1:BKh8', DB_WIN_MIN))).toBe('resign')
+  })
+
+  it('still reads a position the tables call drawn as level', () => {
+    // Such a position keeps a squeezed evaluation instead of a plain zero.
+    expect(currentOffer(judged(shuffling, DB_DRAW_BAND))).toBe('draw')
+    expect(currentOffer(judged(shuffling, -DB_DRAW_BAND))).toBe('draw')
   })
 
   it('says nothing about a position the verdict is not about', () => {

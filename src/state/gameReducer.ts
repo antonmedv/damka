@@ -1,5 +1,5 @@
 import { moveKey } from '../engine/move.ts'
-import { MATE_BOUND } from '../engine/score.ts'
+import { DB_DRAW_BAND, DB_WIN_MIN } from '../engine/db.ts'
 import { applyMove } from '../game/apply.ts'
 import { initialPosition, opposite, rankOf } from '../game/board.ts'
 import {
@@ -327,7 +327,9 @@ export function clockView(state: GameState, now: number): ClockView | null {
  * evaluation is 100, so this is under half a man — small enough to be the
  * tempo and piece-square noise a level position is always worth.
  */
-const LEVEL_SCORE = 40
+// A position the tables call drawn carries a squeezed evaluation rather
+// than a plain zero, so the band has to fit inside what reads as level.
+const LEVEL_SCORE = Math.max(40, DB_DRAW_BAND)
 
 /**
  * Plies of kings shuffling about before the persona will call a level
@@ -353,7 +355,9 @@ export function currentOffer(
   if (verdict === null || verdict.ply !== plyOf(state)) return null
   if (state.setup.humanColor === 'both') return null
   if (status !== 'ongoing') return null
-  if (verdict.score >= MATE_BOUND) {
+  // A mate it has seen, or an ending the tables call won: both are games
+  // the human cannot save.
+  if (verdict.score >= DB_WIN_MIN) {
     return state.declined.resign ? null : 'resign'
   }
   const level = Math.abs(verdict.score) <= LEVEL_SCORE
