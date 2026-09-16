@@ -21,6 +21,7 @@
     "deploy": "npm run build && rsync -azP ./dist/ medv.io:~/damka.medv.io/"
   },
   "dependencies": {
+    "@rrweb/browser-client": "^2.1.4",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },
