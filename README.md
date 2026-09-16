@@ -15,8 +15,8 @@ search in a worker, and five computer opponents.
 
 ## Features
 
-* Russian checkers rules: flying kings, mandatory captures, and the 30-ply draw
-* Alpha-beta search with iterative deepening, transposition table, and capture search, running in a Web Worker
+- Russian checkers rules: flying kings, mandatory captures, and the 30-ply draw
+- Alpha-beta search with iterative deepening, transposition table, and capture search, running in a Web Worker
 
 ## References
 
