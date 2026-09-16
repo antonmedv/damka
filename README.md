@@ -5,6 +5,8 @@ search in a worker, and five computer opponents.
 
 ### [Play the game](https://antonmedv.github.io/damka/)
 
+<a href="https://antonmedv.github.io/damka/"><img src=".github/images/demo.gif" width="400"></a>
+
 ## Features
 
 - Russian checkers rules: flying kings, mandatory captures, the 30-ply
@@ -18,16 +20,6 @@ search in a worker, and five computer opponents.
 - Or play both sides against a friend
 - Move list, clocks, advantage chart, drag or click to move, sound
 - Installable as a PWA; the interface is in Russian
-
-## Development
-
-```sh
-npm install
-npm run dev        # Vite dev server
-npm run check      # typecheck, lint, format, tests
-npm run bench      # engine benchmarks (bundled, not under vitest)
-npm run selfplay   # personas against each other
-```
 
 ## References
 
