@@ -1,49 +1,31 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Шашки</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="web/style.css">
-</head>
-<body>
-<main>
-    <nav>
-        <button id="new-game">Новая игра</button>
-        <div>Имя комп. <span id="opponent"></span></div>
-        <div id="status" style="font-size: 18px; color: blueviolet"></div>
-    </nav>
-    <div id="board" class="board">
-        <div class="lines"></div>
-        <div class="playground"></div>
-        <div class="letters"></div>
-    </div>
-    <div class="history-wrap">
-        <div id="history" class="history"></div>
-        <div class="controls">
-            <button class="back" id="back">◀︎ Назад</button>
-            <button class="forward" id="forward">▶︎</button>
-        </div>
-    </div>
-</main>
-<script type="module" src="web/main.ts"></script>
-<!-- Yandex.Metrika counter -->
-<script type="text/javascript" >
-  (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
-    m[i].l=1*new Date();
-    for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
-    k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
-  (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <title>Damka</title>
+    <meta name="description" content="A browser checkers game." />
+    <meta name="author" content="Антон Медведев" />
 
-  ym(93535806, "init", {
-    clickmap:true,
-    trackLinks:true,
-    accurateTrackBounce:true,
-    webvisor:true
-  });
-</script>
-<noscript><div><img src="https://mc.yandex.ru/watch/93535806" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
-<!-- /Yandex.Metrika counter -->
-</body>
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <meta name="theme-color" content="#2f1b12" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="apple-mobile-web-app-title" content="Damka" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>

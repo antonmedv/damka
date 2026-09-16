@@ -1,17 +1,43 @@
 {
+  "name": "damka",
+  "version": "0.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build:wasm": "zx scripts/build.mjs",
-    "build": "tsc && vite build --base=/шашки/",
+    "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "deploy": "npm run build:wasm && npm run build && rsync -azP dist/ medv.io:/home/anton/medv.io/шашки/"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "selfplay": "rolldown src/opponents/selfplay.ts -f esm -p node -o node_modules/.cache/damka-bench/selfplay.mjs && node node_modules/.cache/damka-bench/selfplay.mjs",
+    "bench": "rolldown src/engine/bench.ts -f esm -p node -o node_modules/.cache/damka-bench/bench.mjs && node -p \"'node ' + process.version + ', v8 ' + process.versions.v8 + ', ' + process.arch\" && node node_modules/.cache/damka-bench/bench.mjs",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
+    "typecheck": "tsc -b --noEmit",
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm run test",
+    "deploy": "npm run build && rsync -azP ./dist/ medv.io:~/damka.medv.io/"
+  },
+  "dependencies": {
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
   },
   "devDependencies": {
-    "threads": "^1.7.0",
-    "typescript": "^4.9.3",
-    "vite": "^4.0.0",
-    "zx": "^7.1.1"
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.7",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "@vitest/coverage-v8": "^5.0.0",
+    "jsdom": "^30.0.1",
+    "oxfmt": "^0.67.0",
+    "oxlint": "^1.81.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.0"
   }
 }

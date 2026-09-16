@@ -1,0 +1,126 @@
+.result {
+  width: min(92vw, 34rem);
+  max-block-size: calc(100dvh - 2rem);
+  overflow-y: auto;
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-radius: 12px;
+  padding: 0;
+  background: var(--surface);
+  color: var(--board-light);
+  box-shadow: 0 20px 60px rgb(0 0 0 / 0.6);
+}
+
+.result::backdrop {
+  background: rgb(0 0 0 / 0.6);
+}
+
+.result__body {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem;
+}
+
+.result__head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.result__headings {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.result__title {
+  margin: 0;
+  font-size: 1.35rem;
+  line-height: 1.2;
+}
+
+.result__title--win {
+  color: var(--accent);
+}
+
+.result__title--loss {
+  color: var(--danger);
+}
+
+.result__lead {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.result__lead:empty {
+  display: none;
+}
+
+.result__reason {
+  margin: 0;
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+.result__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.result__table-caption {
+  margin-bottom: 0.4rem;
+  text-align: start;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.8;
+}
+
+.result__table th,
+.result__table td {
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid rgb(255 255 255 / 0.08);
+  text-align: end;
+}
+
+.result__table tbody th {
+  font-weight: 400;
+  text-align: start;
+  opacity: 0.8;
+}
+
+.result__table thead th {
+  white-space: nowrap;
+}
+
+.result__table tr:last-child th,
+.result__table tr:last-child td {
+  border-bottom: 0;
+}
+
+/* Identity beside the column head, never in the colour of the text. */
+.result__swatch {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-inline-end: 0.35rem;
+  border-radius: 50%;
+  vertical-align: baseline;
+}
+
+.result__swatch--white {
+  background: var(--piece-white);
+}
+
+.result__swatch--black {
+  background: var(--piece-black);
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.35);
+}
+
+.result__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}

@@ -1,0 +1,248 @@
+.board {
+  --rail: 1.25rem;
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--rail) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) var(--rail);
+  width: 100%;
+  max-width: calc(var(--board-size, min(100dvh - 15rem, 720px)) + var(--rail));
+  min-width: 0;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none; /* no iOS long-press menu on pieces */
+}
+
+.board--review .board__grid {
+  filter: saturate(0.6) brightness(0.85);
+}
+
+.board__badge {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 2;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 0.65);
+  color: var(--accent);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.board__grid {
+  grid-column: 2;
+  grid-row: 1;
+  position: relative;
+  display: grid;
+  touch-action: none;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  min-width: 0;
+  aspect-ratio: 1;
+  border-radius: 4px;
+  /* The frame is a shadow, not a border, so the squares fill the box
+     exactly and pointer maths need no border correction. */
+  box-shadow:
+    0 0 0 3px #1a0f09,
+    0 10px 28px rgb(0 0 0 / 0.5);
+  overflow: hidden;
+}
+
+/* Sits on the same grid cell as .board__grid but does not clip. */
+.board__drag-layer {
+  grid-column: 2;
+  grid-row: 1;
+  position: relative;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.board__square {
+  appearance: none;
+  position: relative;
+  margin: 0;
+  border: 0;
+  padding: 0;
+  display: block;
+  font: inherit;
+  color: inherit;
+  cursor: default;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.board__square--dark {
+  background: var(--square-dark);
+}
+
+.board__square--light {
+  background: var(--square-light);
+}
+
+.board__ranks,
+.board__files {
+  display: grid;
+  align-items: center;
+  justify-items: center;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+}
+
+.board__ranks {
+  grid-column: 1;
+  grid-row: 1;
+  grid-template-rows: repeat(8, minmax(0, 1fr));
+}
+
+.board__files {
+  grid-column: 2;
+  grid-row: 2;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+}
+
+@media (max-width: 359px) {
+  .board {
+    --rail: 0px;
+  }
+
+  .board__ranks,
+  .board__files {
+    display: none;
+  }
+}
+
+.board__square--movable {
+  cursor: pointer;
+}
+
+.board__square--target {
+  cursor: pointer;
+}
+
+/* Mouse users get grab cursors and a small lift on hover as a "you can
+   pick this up" hint; touch has no hover, so none of this applies there. */
+@media (hover: hover) and (pointer: fine) {
+  .board__square--movable {
+    cursor: grab;
+  }
+
+  .board__square--movable:hover .board__piece {
+    transform: translateY(-3%) scale(1.04);
+  }
+
+  .board__square--movable:hover .piece {
+    filter: drop-shadow(0 4px 4px rgb(0 0 0 / 0.5));
+  }
+
+  /* With a piece selected by click, the target under the mouse widens. */
+  .board__square--target:hover::after {
+    inset: 30%;
+    opacity: 1;
+  }
+}
+
+.board__grid--dragging,
+.board__grid--dragging .board__square {
+  cursor: grabbing;
+}
+
+.board__square--selected {
+  box-shadow: inset 0 0 0 3px var(--accent);
+}
+
+.board__square--target-hover {
+  box-shadow: inset 0 0 0 4px var(--accent);
+}
+
+.board__square--target-hover::after {
+  opacity: 0;
+}
+
+.board__square--target::after {
+  content: '';
+  position: absolute;
+  inset: 36%;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0.85;
+}
+
+/* The previous move stays readable at a glance: both squares are tinted
+   and ringed, the destination stronger since a piece covers most of it. */
+.board__square--last-from,
+.board__square--last-to {
+  background-image: linear-gradient(var(--last-move), var(--last-move));
+}
+
+.board__square--last-from {
+  box-shadow: inset 0 0 0 2px var(--last-move-ring);
+}
+
+.board__square--last-to {
+  box-shadow: inset 0 0 0 3px var(--last-move-ring);
+}
+
+/* Intermediate landing squares of a multiple capture: tint only. */
+.board__square--last-path {
+  background-image: linear-gradient(var(--last-move), var(--last-move));
+}
+
+/* Fills the cell so translate(100%) is exactly one square. */
+.board__piece {
+  position: absolute;
+  inset: 0;
+  padding: 9%;
+  display: block;
+  transition: transform 90ms ease-out;
+}
+
+/* Squares paint in DOM order, so a piece flying in over later squares
+   (up or left) would be covered by them mid-flight. Lift it above. The
+   flight itself is timed in slide.ts: the path has as many legs as the
+   move has landing squares, which a static keyframe rule cannot express. */
+.board__piece--arrived {
+  z-index: 1;
+}
+
+/* Focus ring contrasts with either square tone; selection uses box-shadow. */
+.board__square:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: -3px;
+}
+
+.board__square--light:focus-visible {
+  outline-color: #1a0f09;
+}
+
+.board__lifted {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 12.5%;
+  height: 12.5%;
+  padding: 1.125%; /* 9% of one cell, matching .board__square */
+  pointer-events: none;
+  will-change: transform;
+}
+
+.board__lifted .piece {
+  transform: scale(1.08);
+  filter: drop-shadow(0 10px 10px rgb(0 0 0 / 0.55));
+}
+
+.board__lifted--returning {
+  transition: transform 150ms ease;
+}
+
+.board__lifted--settling {
+  transition: transform 120ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .board__lifted--returning,
+  .board__lifted--settling,
+  .board__piece {
+    transition: none;
+  }
+}

@@ -1,0 +1,132 @@
+.game {
+  --board-chrome: 15rem;
+  --board-cap: 720px;
+  /* One square edge, small enough to fit the viewport height with the
+     navbar, page padding and credit line around it. */
+  --board-size: min(100dvh - var(--board-chrome), var(--board-cap));
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    'header'
+    'clocks'
+    'board'
+    'panel';
+  gap: 1rem;
+  width: 100%;
+  max-width: 1200px;
+  justify-items: center;
+}
+
+.game__header {
+  grid-area: header;
+  width: 100%;
+  max-width: 720px;
+}
+
+.game__clocks {
+  grid-area: clocks;
+  width: 100%;
+  max-width: 720px;
+}
+
+/* The readouts and their gap come off the height the board may take; the
+   strip is shorter on a phone, where the two of them sit side by side. */
+.game--timed {
+  --board-chrome: 19rem;
+}
+
+@media (min-width: 481px) {
+  .game--timed {
+    --board-chrome: 21rem;
+  }
+}
+
+.game__board {
+  grid-area: board;
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+}
+
+.game__panel {
+  grid-area: panel;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 720px;
+}
+
+/* Toolbar and list read as one panel: the buttons navigate what they sit on. */
+.game__history {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.game__history .controls {
+  border-radius: 6px 6px 0 0;
+  border-bottom: 0;
+}
+
+.game__history .move-list {
+  border-radius: 0 0 6px 6px;
+  border-top: 0;
+}
+
+@media (min-width: 900px) {
+  .game {
+    --board-chrome: 10.5rem;
+    --board-cap: 72rem;
+    --panel-width: 22rem;
+    --board-rail: 1.25rem;
+    grid-template-columns: minmax(0, 1fr) var(--panel-width);
+    /* The panel row takes what the board leaves over the header and the
+       clocks, and never less than a toolbar and a move or two. */
+    grid-template-rows: auto auto minmax(7rem, 1fr);
+    grid-template-areas:
+      'board header'
+      'board clocks'
+      'board panel';
+    align-items: start;
+    gap: 1rem 1.5rem;
+    /* Hug the two columns so the panel stays beside the board however
+       big the board grew, instead of drifting to a fixed page edge. */
+    max-width: calc(
+      var(--board-size) + var(--board-rail) + 1.5rem + var(--panel-width)
+    );
+  }
+
+  .game__header,
+  .game__clocks,
+  .game__panel {
+    max-width: none;
+  }
+
+  /* Beside the board the panel is as tall as the board leaves it and no
+     taller: the history is taken out of flow so its moves cannot stretch
+     the row, and it scrolls inside the box the board sized. */
+  .game__panel {
+    position: relative;
+    align-self: stretch;
+    min-height: 0;
+  }
+
+  .game__panel > .game__history {
+    position: absolute;
+    inset: 0;
+  }
+
+  /* Beside the board the clocks cost no height, so it may grow as before. */
+  .game--timed {
+    --board-chrome: 10.5rem;
+  }
+
+  /* No cap of its own: the list grows with the moves and, once they fill
+     the panel, shrinks into it and scrolls. */
+  .game__panel .move-list {
+    min-height: 0;
+    max-height: none;
+  }
+}

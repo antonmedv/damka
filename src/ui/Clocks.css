@@ -1,0 +1,86 @@
+.clocks {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 0.08);
+  border-radius: 6px;
+  background: rgb(255 255 255 / 0.08);
+}
+
+.clocks__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0.4rem 0.75rem;
+  background: rgb(0 0 0 / 0.25);
+}
+
+.clocks__row--running {
+  background: rgb(0 0 0 / 0.4);
+}
+
+.clocks__label {
+  font-size: 0.9rem;
+  letter-spacing: 0.02em;
+  opacity: 0.85;
+}
+
+/* The idle side steps back by its digits alone: dimming the whole row
+   took the label below the contrast a label has to keep. */
+.clocks__row:not(.clocks__row--running) .clocks__time {
+  opacity: 0.6;
+}
+
+.clocks__time {
+  font-variant-numeric: tabular-nums;
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.clocks__row--running .clocks__time {
+  color: var(--accent);
+}
+
+.clocks__row--low .clocks__time,
+.clocks__row--flagged .clocks__time {
+  color: var(--danger);
+}
+
+.clocks__row--flagged .clocks__time {
+  text-decoration: line-through;
+}
+
+/* Spoken, never seen. */
+.clocks__alert {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* On a phone the two readouts sit side by side: a stacked pair costs the
+   board thirty pixels it cannot spare. */
+@media (max-width: 480px) {
+  .clocks {
+    flex-direction: row;
+  }
+
+  .clocks__row {
+    flex: 1 1 0;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.1rem;
+  }
+
+  .clocks__label {
+    font-size: 0.75rem;
+  }
+}

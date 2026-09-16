@@ -1,0 +1,108 @@
+:root {
+  font-family: system-ui, sans-serif;
+  color-scheme: dark;
+  --board-dark: #2f1b12;
+  --board-light: #e3bd91;
+  --piece-red: #d94436;
+  --square-dark: #7b4b2a;
+  --square-light: var(--board-light);
+  --piece-white: #f4ead6;
+  --piece-black: #1c1815;
+  --accent: #f2b544;
+  /* Text on an accent-filled surface; the board's own dark brown. */
+  --accent-ink: #2b1a0e;
+  /* Time running out; the only red the interface uses for a warning. */
+  --danger: #ff6b5e;
+  /* Surface of the dialogs; the result graph rings its dots in it. */
+  --surface: #24140d;
+  /* The result graph: one signed series, so its two poles are a diverging
+     pair. White's lead wears the piece colour; Black's a cool blue, since
+     a black fill on this board would be no fill at all. */
+  --chart-white: #f4ead6;
+  --chart-black: #4f9fd4;
+  /* Previous move: a yellow distinct from the amber selection accent. */
+  --last-move: rgb(255 222 89 / 0.5);
+  --last-move-ring: rgb(255 222 89 / 0.85);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100svh;
+  background: var(--board-dark);
+  color: var(--board-light);
+}
+
+/* While a piece is being dragged the hand stays closed wherever the
+   pointer goes, not just over the board. */
+html.is-dragging,
+html.is-dragging * {
+  cursor: grabbing !important;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+@media (min-width: 900px) {
+  .app {
+    padding: 1.5rem;
+  }
+}
+
+/* Author credit below the game. */
+.credit {
+  padding: 0 1rem 1.5rem;
+  text-align: center;
+  font-size: 0.8rem;
+  opacity: 0.6;
+}
+
+/* Shared button used by Controls and dialogs. */
+.button {
+  appearance: none;
+  margin: 0;
+  border: 1px solid rgb(255 255 255 / 0.15);
+  border-radius: 6px;
+  padding: 0.5rem 0.9rem;
+  min-height: 44px;
+  background: rgb(255 255 255 / 0.06);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.button:hover:not(:disabled) {
+  background: rgb(255 255 255 / 0.12);
+}
+
+/* Square button whose glyph carries the meaning; the label is its title. */
+.button--icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  padding: 0;
+}
+
+.button--accent {
+  border-color: rgb(242 181 68 / 0.6);
+  color: var(--accent);
+}
+
+.button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

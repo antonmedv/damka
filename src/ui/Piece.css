@@ -1,0 +1,24 @@
+.piece {
+  display: block;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 2px 2px rgb(0 0 0 / 0.45));
+}
+
+.piece--white {
+  --piece-fill: var(--piece-white);
+  --piece-rim: #b8a488;
+  --piece-line: rgb(0 0 0 / 0.18);
+  --piece-shine: rgb(255 255 255 / 0.55);
+}
+
+.piece--black {
+  --piece-fill: var(--piece-black);
+  --piece-rim: #000;
+  --piece-line: rgb(255 255 255 / 0.16);
+  --piece-shine: rgb(255 255 255 / 0.2);
+}
+
+.piece__crown {
+  fill: var(--accent);
+}

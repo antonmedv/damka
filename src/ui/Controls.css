@@ -1,0 +1,32 @@
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.25rem 0.25rem 0.25rem 0.75rem;
+  border: 1px solid rgb(255 255 255 / 0.08);
+  border-radius: 6px;
+  background: rgb(0 0 0 / 0.25);
+}
+
+.controls__title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  opacity: 0.85;
+}
+
+.controls__to-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  padding-inline: 0.6rem;
+  font-size: 0.9rem;
+}
+
+.controls__steps {
+  display: flex;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
