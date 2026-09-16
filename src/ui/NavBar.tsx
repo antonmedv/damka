@@ -63,7 +63,7 @@ export function NavBar({ onFlip }: NavBarProps) {
           <li>
             <a
               className="navbar__tab navbar__tab--current"
-              href="/"
+              href={import.meta.env.BASE_URL}
               aria-current="page"
               // Already here; a real navigation would throw the game away.
               onClick={(e) => e.preventDefault()}

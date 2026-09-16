@@ -2,28 +2,28 @@
   "name": "Damka",
   "short_name": "Damka",
   "description": "A browser checkers game.",
-  "id": "/",
-  "start_url": "/",
-  "scope": "/",
+  "id": ".",
+  "start_url": ".",
+  "scope": ".",
   "display": "standalone",
   "orientation": "any",
   "theme_color": "#2f1b12",
   "background_color": "#2f1b12",
   "icons": [
     {
-      "src": "/pwa-192x192.png",
+      "src": "pwa-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/pwa-512x512.png",
+      "src": "pwa-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/maskable-512x512.png",
+      "src": "maskable-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

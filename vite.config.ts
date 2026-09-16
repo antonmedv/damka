@@ -37,6 +37,8 @@ function yandexMetrika(): Plugin {
 
 // https://vite.dev/config/
 export default defineConfig({
+  // GitHub Pages serves the app from /damka/; the rsync deploy serves it from the root.
+  base: process.env.BASE_PATH ?? '/',
   plugins: [react(), yandexMetrika()],
   test: {
     environment: 'jsdom',
