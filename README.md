@@ -24,3 +24,7 @@ search in a worker, and five computer opponents.
 - The earlier Go implementation, with an endgame database and a neural
   network evaluation, lives on the
   [go-version](https://github.com/antonmedv/damka/tree/go-version) branch
+
+# License
+
+[MIT](LICENSE)
