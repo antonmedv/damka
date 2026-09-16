@@ -5,21 +5,18 @@ search in a worker, and five computer opponents.
 
 ### [Play the game](https://antonmedv.github.io/damka/)
 
+**Game**:
+
+<a href="https://antonmedv.github.io/damka/"><img src=".github/images/screenshot.png" width="800"></a>
+
+**Training**:
+
 <a href="https://antonmedv.github.io/damka/"><img src=".github/images/demo.gif" width="400"></a>
 
 ## Features
 
-- Russian checkers rules: flying kings, mandatory captures, the 30-ply
-  draw
-- Alpha-beta search (negamax with principal variation search, iterative
-  deepening, aspiration windows, a transposition table, and a quiescence
-  search over the forced captures), off the main thread in a Web Worker
-- Five opponents, from the kitten to the raven; the evaluation is the
-  same for all of them, and only the search depth, the time budget and
-  the allowed distance from the best move differ
-- Or play both sides against a friend
-- Move list, clocks, advantage chart, drag or click to move, sound
-- Installable as a PWA; the interface is in Russian
+* Russian checkers rules: flying kings, mandatory captures, and the 30-ply draw
+* Alpha-beta search with iterative deepening, transposition table, and capture search, running in a Web Worker
 
 ## References
 
