@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Dispatch } from 'react'
 import { toBitPosition } from '../engine/adapter.ts'
 import { moveKey } from '../engine/move.ts'
 import { formatPos } from '../engine/position.ts'
 import { legalMoves } from '../game/moves.ts'
-import type { Position } from '../game/types.ts'
+import type { GameVariant, Position } from '../game/types.ts'
 import { opponentById } from '../opponents/opponents.ts'
 import { budgetFor, isPersonaId, personas } from '../opponents/personas.ts'
 import { defaultThinker } from '../opponents/thinker.ts'
@@ -17,10 +17,7 @@ import {
   computerToMove,
   lostOnTime,
   currentPosition,
-  defaultSetup,
   displayPosition,
-  gameReducer,
-  initialState,
   isReviewing,
   lastMove,
   movable,
@@ -28,90 +25,71 @@ import {
   selectedSquare,
   targets,
 } from '../state/gameReducer.ts'
-import type { GameAction, GameSetup, GameState } from '../state/gameReducer.ts'
-import { prefsFrom, savePrefs } from '../state/preferences.ts'
-import type { ColorChoice } from '../state/preferences.ts'
+import type { GameAction, GameState } from '../state/gameReducer.ts'
 import { banterOf } from './banter.ts'
 import { Board } from './Board.tsx'
 import { ClockPanel } from './ClockPanel.tsx'
-import { realNow } from './useClockTick.ts'
 import { Controls } from './Controls.tsx'
 import { MoveList } from './MoveList.tsx'
 import { prefersReducedMotion } from './motion.ts'
-import { NewGameDialog } from './NewGameDialog.tsx'
 import { OpponentHeader } from './OpponentHeader.tsx'
 import { ResultDialog } from './ResultDialog.tsx'
 import { MAX_MS as SLIDE_MAX_MS } from './slide.ts'
 import './GameScreen.css'
 
 export type GameScreenProps = {
-  /** Setup of the first game; by default the first persona, human white. */
-  initialSetup?: GameSetup
-  /** Position the first game starts from; the normal opening by default. */
-  initialPosition?: Position | null
-  /** Colour the dialog preselects; the colour of the first game by default. */
-  initialColor?: ColorChoice
+  /** The game on the board. `Page` owns it; this screen only draws it. */
+  state: GameState
+  dispatch: Dispatch<GameAction>
+  /**
+   * The monotonic reading the clock runs on, stamped onto every action by
+   * the dispatch above. One identity for the life of the page, so the
+   * effects that depend on it do not re-run.
+   */
+  at: () => number
   /** Source of computer moves; a worker by default. */
   thinker?: Thinker
   /** Whether the computer may use the endgame tables; `?db=off` says no. */
   endgameDb?: boolean
   /** Seed for each request; random by default, fixed in tests. */
   seed?: () => number
-  /** Source of the monotonic time the clock runs on; fixed in tests. */
-  now?: () => number
   /**
-   * Hands the page chrome the board's own flip action, which the navbar
-   * shows: the board belongs to this screen, the bar around it does not.
+   * Asks for a new game of the kind being played. The dialog belongs to the
+   * page chrome, which opens it from the navbar as well.
    */
-  onFlipReady?: (flip: () => void) => void
+  onNewGame: () => void
 }
 
 function randomSeed(): number {
   return Math.floor(Math.random() * 0x7fffffff)
 }
 
+/**
+ * The game itself: board, clock, opponent, move list and the result
+ * screen. It holds no game state of its own — `Page` owns the reducer,
+ * because the navbar above and the new game dialog read the same game —
+ * so everything here is drawn from `state` and asked for through
+ * `dispatch`.
+ */
 export function GameScreen({
-  initialSetup = defaultSetup,
-  initialPosition = null,
-  initialColor = initialSetup.humanColor === 'both'
-    ? 'white'
-    : initialSetup.humanColor,
+  state,
+  dispatch,
+  at,
   thinker,
   endgameDb = true,
   seed = randomSeed,
-  now = realNow,
-  onFlipReady,
+  onNewGame,
 }: GameScreenProps) {
-  const [state, send] = useReducer(gameReducer, null, () =>
-    initialState(initialSetup, initialPosition ?? undefined, now()),
-  )
-  // `now` may be a fresh function on every render, so the stamping
-  // dispatch reads it from a ref and keeps one identity for the effects
-  // that depend on it.
-  const clockSource = useRef(now)
-  useEffect(() => {
-    clockSource.current = now
-  }, [now])
-  // Every action carries the moment it happened, so the reducer can charge
-  // the clock without ever reading one itself.
-  const at = useCallback(() => clockSource.current(), [])
-  // The stamp goes on first, so an action that measured its own moment —
-  // the flag, which decided on the reading it took — keeps it.
-  const dispatch = useCallback(
-    (action: GameAction) => send({ at: at(), ...action }),
-    [send, at],
-  )
-  const flip = useCallback(() => dispatch({ type: 'flipBoard' }), [dispatch])
-  useEffect(() => {
-    onFlipReady?.(flip)
-  }, [onFlipReady, flip])
-  const [dialogOpen, setDialogOpen] = useState(false)
   const [resultOpen, setResultOpen] = useState(false)
   const showResult = useCallback(() => setResultOpen(true), [])
   useGameOver(state, showResult)
-  // Kept beside the setup, which only ever holds a colour that was rolled.
-  const [colorChoice, setColorChoice] = useState<ColorChoice>(initialColor)
-  useComputerMove(state, dispatch, useThinker(thinker, endgameDb), seed, at)
+  useComputerMove(
+    state,
+    dispatch,
+    useThinker(thinker, endgameDb, state.setup.variant),
+    seed,
+    at,
+  )
   useMoveSound(state)
   // Read once: every selector below that asks how the game stands would
   // otherwise generate the same position's legal moves all over again.
@@ -131,10 +109,10 @@ export function GameScreen({
           onShowResult={status === 'ongoing' ? undefined : showResult}
           onAccept={(offer) => dispatch({ type: 'accept', offer })}
           onDecline={(offer) => dispatch({ type: 'decline', offer })}
-          onNewGame={() => setDialogOpen(true)}
+          onNewGame={onNewGame}
         />
       </div>
-      <ClockPanel state={state} dispatch={dispatch} now={now} />
+      <ClockPanel state={state} dispatch={dispatch} now={at} />
       <div className="game__board">
         <Board
           position={displayPosition(state)}
@@ -177,21 +155,8 @@ export function GameScreen({
         onClose={() => setResultOpen(false)}
         onNewGame={() => {
           setResultOpen(false)
-          setDialogOpen(true)
+          onNewGame()
         }}
-      />
-      <NewGameDialog
-        open={dialogOpen}
-        initial={state.setup}
-        initialColor={colorChoice}
-        onStart={(setup, color) => {
-          setColorChoice(color)
-          // Remembered so the next game, and the next visit, open on it.
-          savePrefs(prefsFrom(setup, color))
-          dispatch({ type: 'newGame', setup })
-          setDialogOpen(false)
-        }}
-        onCancel={() => setDialogOpen(false)}
       />
     </div>
   )
@@ -251,8 +216,19 @@ function useMoveSound(state: GameState): void {
  * disposing it on unmount would also run between StrictMode's doubled
  * effects and kill the first request.
  */
-function useThinker(given: Thinker | undefined, endgameDb: boolean): Thinker {
-  const [own] = useState<Thinker>(() => given ?? defaultThinker({ endgameDb }))
+/**
+ * The worker is made once, so the variant it is told about is the one the
+ * session opened on. That is all it needs: it decides whether to fetch the
+ * endgame tables up front, and a later game of checkers starts them itself.
+ */
+function useThinker(
+  given: Thinker | undefined,
+  endgameDb: boolean,
+  variant: GameVariant,
+): Thinker {
+  const [own] = useState<Thinker>(
+    () => given ?? defaultThinker({ endgameDb, variant }),
+  )
   return given ?? own
 }
 
@@ -325,7 +301,14 @@ function useComputerMove(
             clock.timings[position.toMove].incrementMs,
           )
     thinker
-      .think({ id, position: literal, persona, seed: seed(), ...limits })
+      .think({
+        id,
+        variant: state.setup.variant,
+        position: literal,
+        persona,
+        seed: seed(),
+        ...limits,
+      })
       .then(
         (reply) => {
           if (issued.current?.id !== id) return

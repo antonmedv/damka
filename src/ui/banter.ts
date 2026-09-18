@@ -5,7 +5,7 @@
  * is read off the state, so the bubble never has a memory of its own.
  */
 import { opposite } from '../game/board.ts'
-import type { GameStatus } from '../game/types.ts'
+import type { GameStatus, GameVariant } from '../game/types.ts'
 import {
   currentOffer,
   currentPosition,
@@ -14,7 +14,17 @@ import {
 } from '../state/gameReducer.ts'
 import type { GameState, OfferKind } from '../state/gameReducer.ts'
 
-export type RemarkId = 'feast' | 'crowned' | 'ouch' | 'praise'
+export type RemarkId =
+  /** Checkers: taking pieces is good news, being taken from is not. */
+  | 'feast'
+  | 'crowned'
+  | 'ouch'
+  | 'praise'
+  /** Поддавки: the same events, with the sentiment the other way round. */
+  | 'stuffed'
+  | 'fed'
+  | 'burdened'
+  | 'unloaded'
 
 export type Banter =
   /** The game is over; the bubble reads the result and reopens the screen. */
@@ -24,6 +34,27 @@ export type Banter =
 
 /** Pieces taken in one move before the opponent bothers to comment. */
 const HAUL = 2
+
+/**
+ * Which remark an event earns, by game and by who it happened to. The
+ * events are the same in both games and mean opposite things: a pile of
+ * pieces taken is a feast at checkers and a force-feeding at поддавки, and
+ * a crown is a prize at one and a millstone at the other. First entry is
+ * the opponent's own move, second the human's.
+ */
+const REMARKS = {
+  checkers: {
+    promotes: ['crowned', 'praise'],
+    haul: ['feast', 'ouch'],
+  },
+  giveaway: {
+    promotes: ['burdened', 'unloaded'],
+    haul: ['stuffed', 'fed'],
+  },
+} as const satisfies Record<
+  GameVariant,
+  Record<'promotes' | 'haul', readonly [RemarkId, RemarkId]>
+>
 
 export function banterOf(
   state: GameState,
@@ -40,9 +71,13 @@ export function banterOf(
   if (move === null) return null
   // Whoever is not to move now is the side that played it.
   const own = opposite(currentPosition(state).toMove) !== state.setup.humanColor
-  if (move.promotes) return { kind: 'remark', id: own ? 'crowned' : 'praise' }
+  const remarks = REMARKS[state.setup.variant]
+  const said = own ? 0 : 1
+  if (move.promotes) {
+    return { kind: 'remark', id: remarks.promotes[said] }
+  }
   if (move.captures.length >= HAUL) {
-    return { kind: 'remark', id: own ? 'feast' : 'ouch' }
+    return { kind: 'remark', id: remarks.haul[said] }
   }
   return null
 }

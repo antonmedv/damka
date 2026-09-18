@@ -10,7 +10,12 @@ const now = () => clock
 
 function timed(id: '1+0' | '3+2' = '3+2'): GameState {
   return initialState(
-    { opponentId: 'friend', humanColor: 'both', timeControlId: id },
+    {
+      variant: 'checkers',
+      opponentId: 'friend',
+      humanColor: 'both',
+      timeControlId: id,
+    },
     undefined,
     0,
   )

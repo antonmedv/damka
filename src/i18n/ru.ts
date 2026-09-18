@@ -122,12 +122,21 @@ export const ru = {
     },
     /** Turns the offer down; it is not made again this game. */
     decline: 'Играем дальше',
-    /** Short remarks on the move just played. */
+    /**
+     * Short remarks on the move just played. The поддавки four answer the
+     * checkers four: the same events, and the opposite thing to say about
+     * them, because there a haul of pieces is a punishment and a дамка is
+     * a piece nobody can get rid of.
+     */
     remark: {
       feast: 'Вкусно!',
       crowned: 'А вот и дамка!',
       ouch: 'Ох, больно…',
       praise: 'Хороший ход!',
+      stuffed: 'Ох, накормили…',
+      fed: 'Приятного аппетита!',
+      burdened: 'Дамка? Вот незадача.',
+      unloaded: 'Дамка вам не подарок!',
     },
   },
   turn: {
@@ -187,6 +196,16 @@ export const ru = {
       black: 'Чёрные',
       description:
         'Перевес в материале по ходам партии: у белых он отложен вверх от оси, у чёрных вниз. Дамка считается за три шашки.',
+      /**
+       * The same graph read for поддавки, where the side with fewer pieces
+       * is the one in front. The series is turned over so that up still
+       * means winning; the wording has to say why.
+       */
+      giveaway: {
+        title: 'Перевес в партии',
+        description:
+          'Перевес по ходам партии: в поддавках впереди тот, у кого шашек меньше. У белых перевес отложен вверх от оси, у чёрных вниз. Дамка считается за три шашки.',
+      },
       /** Reading under the graph; the number leads, the move follows. */
       lead: (advantage: number) =>
         advantage === 0

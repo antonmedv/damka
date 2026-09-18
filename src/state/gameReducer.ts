@@ -11,6 +11,7 @@ import {
 import type {
   Color,
   GameStatus,
+  GameVariant,
   Move,
   Piece,
   Position,
@@ -44,6 +45,8 @@ import {
 import type { History } from './history.ts'
 
 export type GameSetup = {
+  /** Which game the board is playing; see RULES.md. */
+  readonly variant: GameVariant
   readonly opponentId: OpponentId
   /** 'both' = two humans on one device. */
   readonly humanColor: Color | 'both'
@@ -144,6 +147,7 @@ export type GameAction = (
 
 /** First launch: the fox, human plays white. */
 export const defaultSetup: GameSetup = {
+  variant: 'checkers',
   opponentId: 'fox',
   humanColor: 'white',
 }
@@ -156,7 +160,8 @@ export function initialState(
   now?: number,
 ): GameState {
   const control = timeControlOf(setup.timeControlId)
-  const started = now !== undefined && runs(position, true) ? now : null
+  const started =
+    now !== undefined && runs(position, true, setup.variant) ? now : null
   return {
     history: createHistory(position),
     moves: [],
@@ -180,8 +185,12 @@ export function initialState(
  * board has not already settled. The one rule behind every clock in this
  * file — starting one, moving one along the timeline, and charging one.
  */
-function runs(position: Position, live: boolean): boolean {
-  return live && gameStatus(position) === 'ongoing'
+function runs(
+  position: Position,
+  live: boolean,
+  variant: GameVariant,
+): boolean {
+  return live && gameStatus(position, variant) === 'ongoing'
 }
 
 /** How many moves have been played into the position on the board. */
@@ -213,7 +222,7 @@ export function isReviewing(state: GameState): boolean {
 }
 
 export function statusOf(state: GameState): GameStatus {
-  return gameStatus(currentPosition(state))
+  return gameStatus(currentPosition(state), state.setup.variant)
 }
 
 /**
@@ -270,7 +279,7 @@ function endPly(state: GameState): number {
 /** How the game ended, read at the end of the timeline rather than here. */
 export function finalOutcome(state: GameState): GameStatus {
   return decided(
-    gameStatus(finalPosition(state)),
+    gameStatus(finalPosition(state), state.setup.variant),
     finalLostOnTime(state),
     agreedAt(state, endPly(state)),
   )
@@ -580,7 +589,7 @@ function travelled(
   // onto a position the players settled on must not set the clock going
   // again, or the flag would fall on a game that already had its result.
   const running =
-    runs(history.present, history.future.length === 0) &&
+    runs(history.present, history.future.length === 0, state.setup.variant) &&
     agreedAt(state, ply) === null
   const next = clock === null || !moved ? clock : seek(clock, ply, running, now)
   return {
@@ -822,7 +831,10 @@ function commit(
     slide,
     // The mover pays for the move that ended the game, and then the clock
     // stops with it: nobody is on move, so nobody is being charged.
-    clock: charged === null || runs(next, true) ? charged : stop(charged),
+    clock:
+      charged === null || runs(next, true, state.setup.variant)
+        ? charged
+        : stop(charged),
     verdict,
     // A move can only be played where nothing has been agreed, so anything
     // standing belongs to the line this move has just abandoned.

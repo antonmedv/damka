@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import { fromBitPosition, toBitPosition } from './adapter.ts'
 import { applyMove } from './apply.ts'
-import { bit, fromSquare64, lsb, popcount, toSquare64 } from './bitboard.ts'
+import {
+  RANK_1,
+  RANK_8,
+  bit,
+  fromSquare64,
+  lsb,
+  popcount,
+  squareFromName32,
+  toSquare64,
+} from './bitboard.ts'
 import {
   moveCaptureCount,
   moveFrom,
@@ -138,5 +147,41 @@ describe('detailed moves', () => {
     const moves = generateDetailed(initialBitPosition())
     expect(moves).toHaveLength(7)
     for (const m of moves) expect(m.path).toEqual([m.to])
+  })
+})
+
+/**
+ * Every capture lands on a square beyond the piece taken, and beyond the
+ * edge of the board there is no square to land on. So a piece standing on
+ * file a, file h, rank 1 or rank 8 cannot be captured at all where it
+ * stands — it has to walk back into the middle first.
+ *
+ * This is a property of the generator rather than of either objective, so
+ * it holds for both games. It was written to justify a поддавки
+ * evaluation term, which self-play then measured as worth nothing (see
+ * `evalGiveaway`); the fact outlived the term, and it is the kind of rule
+ * a capture generator can quietly get wrong.
+ */
+describe('the border cannot be captured', () => {
+  const FILE_A_H = 'a1 a3 a5 a7 h2 h4 h6 h8'
+    .split(' ')
+    .reduce((mask, name) => mask | bit(squareFromName32(name)), 0)
+  const BORDER = FILE_A_H | RANK_1 | RANK_8
+
+  it('never takes a piece off the edge of the board', () => {
+    const rng = createRng(3)
+    const positions = randomWalk(rng, 200)
+    while (positions.length < 900) positions.push(randomPlacement(rng))
+    let captures = 0
+    for (const p of positions) {
+      for (const move of generateDetailed(p)) {
+        for (const square of move.captures) {
+          captures++
+          expect(BORDER & bit(fromSquare64(square))).toBe(0)
+        }
+      }
+    }
+    // A property nothing exercised would pass for the wrong reason.
+    expect(captures).toBeGreaterThan(1000)
   })
 })

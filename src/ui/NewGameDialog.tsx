@@ -127,13 +127,15 @@ function NewGameForm({
       : (timeChoice as TimeControlId)
     // The start button is disabled on bad numbers; Enter also lands here.
     if (control === null) return
-    const setup: GameSetup = versusComputer
-      ? {
-          opponentId,
-          humanColor: resolveColor(color, rng),
-          timeControlId: control,
-        }
-      : { opponentId, humanColor: 'both', timeControlId: control }
+    const setup: GameSetup = {
+      // The dialog sets a game up; which game it is belongs to the navbar,
+      // so it travels through untouched.
+      variant: initial.variant,
+      opponentId,
+      // Two humans share the screen and there is no side to draw for.
+      humanColor: versusComputer ? resolveColor(color, rng) : 'both',
+      timeControlId: control,
+    }
     onStart(setup, color)
   }
 

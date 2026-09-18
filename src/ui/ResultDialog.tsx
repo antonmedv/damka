@@ -97,7 +97,7 @@ function Result({
         </div>
       </header>
 
-      <AdvantageChart points={stats.points} />
+      <AdvantageChart points={stats.points} variant={state.setup.variant} />
 
       <Table
         stats={stats}
@@ -154,7 +154,10 @@ function reasonOf(
   if (status === 'draw') return t.gameOver.reason.drawRule
   const winner = winnerOf(status)
   if (winner === null) return ''
-  const left = materialOf(finalPosition(state), opposite(winner))
+  // Whichever side ran out is the one the reason is about, and that is
+  // the loser at checkers and the winner at поддавки.
+  const ranOut = state.setup.variant === 'giveaway' ? winner : opposite(winner)
+  const left = materialOf(finalPosition(state), ranOut)
   return left.men + left.kings === 0
     ? t.gameOver.reason.noPieces
     : t.gameOver.reason.noMoves

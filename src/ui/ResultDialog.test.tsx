@@ -10,7 +10,11 @@ import { ResultDialog } from './ResultDialog.tsx'
 
 const sq = squareFromName
 
-const hotSeat: GameSetup = { opponentId: 'friend', humanColor: 'both' }
+const hotSeat: GameSetup = {
+  variant: 'checkers',
+  opponentId: 'friend',
+  humanColor: 'both',
+}
 
 function stateAt(literal: string, setup: GameSetup = hotSeat): GameState {
   return initialState(setup, fromBitPosition(parsePos(literal)), 0)
@@ -68,13 +72,29 @@ describe('ResultDialog', () => {
     expect(screen.getByText('Ходить нечем')).toBeInTheDocument()
   })
 
+  it('says why the winner won at поддавки, not why the loser lost', () => {
+    const giveaway: GameSetup = { ...hotSeat, variant: 'giveaway' }
+    // White's only move is a1-b2, Black must take it, and White is then
+    // out of pieces — which is the поддавки win. The reason has to be
+    // read off the winner there, or it would report the loser's full
+    // board as "nothing to move with".
+    show({
+      ...play(stateAt('W:Wa1:Bc3'), ['a1', 'b2'], ['c3', 'a1']),
+      setup: giveaway,
+    })
+    expect(
+      screen.getByRole('heading', { name: 'Победа белых' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Шашек не осталось')).toBeInTheDocument()
+  })
+
   it('names the result in the player own terms', () => {
-    show(won({ opponentId: 'fox', humanColor: 'white' }))
+    show(won({ variant: 'checkers', opponentId: 'fox', humanColor: 'white' }))
     expect(screen.getByText('Вы выиграли')).toBeInTheDocument()
   })
 
   it('names the opponent when the player lost', () => {
-    show(won({ opponentId: 'fox', humanColor: 'black' }))
+    show(won({ variant: 'checkers', opponentId: 'fox', humanColor: 'black' }))
     expect(screen.getByText('Выигрывает Лиса')).toBeInTheDocument()
   })
 
@@ -123,7 +143,7 @@ describe('ResultDialog', () => {
   })
 
   it('puts the player own column first', () => {
-    show(won({ opponentId: 'fox', humanColor: 'black' }))
+    show(won({ variant: 'checkers', opponentId: 'fox', humanColor: 'black' }))
     const table = screen.getByRole('table', { name: 'Партия в числах' })
     const heads = within(table)
       .getAllByRole('columnheader')

@@ -6,12 +6,18 @@ import { legalMoves } from '../game/moves.ts'
 import { personas } from './personas.ts'
 import type { ThinkConfig, ThinkRequest, ThinkResponse } from './think.ts'
 import { DirectThinker } from './direct.ts'
-import { LazyThinker, WorkerThinker, defaultThinker } from './thinker.ts'
+import {
+  LazyThinker,
+  WorkerThinker,
+  defaultConfig,
+  defaultThinker,
+} from './thinker.ts'
 import type { WorkerLike } from './thinker.ts'
 
 const start = formatPos(initialBitPosition())
 const request: ThinkRequest = {
   id: 1,
+  variant: 'checkers',
   position: start,
   persona: 'hare',
   seed: 1,
@@ -122,9 +128,10 @@ describe('WorkerThinker', () => {
   }
 
   it('passes the configuration to every worker it starts', () => {
-    const { workers, thinker } = setup({ endgameDb: false })
+    const config: ThinkConfig = { endgameDb: false, variant: 'giveaway' }
+    const { workers, thinker } = setup(config)
     thinker.warmUp()
-    expect(workers[0]!.config).toEqual({ endgameDb: false })
+    expect(workers[0]!.config).toEqual(config)
     thinker.dispose()
   })
 
@@ -134,7 +141,7 @@ describe('WorkerThinker', () => {
     thinker.warmUp()
     thinker.warmUp()
     expect(workers).toHaveLength(1)
-    expect(workers[0]!.config).toEqual({ endgameDb: true })
+    expect(workers[0]!.config).toEqual(defaultConfig)
     const reply = thinker.think(request)
     expect(workers).toHaveLength(1)
     expect(workers[0]!.sent).toHaveLength(1)

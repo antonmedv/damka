@@ -14,6 +14,22 @@
  *
  *   npm run selfplay -- games=1 pairs=raven-kitten show=1
  *
+ * `variant=giveaway` plays поддавки instead of checkers; the tables are
+ * then off for both sides whatever `db` says, because they hold checkers
+ * values. `baseline` says which side searches on the negated checkers
+ * evaluation instead of the поддавки one, which is how the latter is
+ * measured against what it replaced:
+ *
+ *   npm run selfplay -- variant=giveaway games=200 pairs=owl-owl \
+ *     baseline=b random=6
+ *
+ * `weights=man,king,promotion,tempo` replaces the поддавки evaluation's
+ * numbers for the run, so a set can be tried without touching the engine.
+ * The two together are how the shipped set was found:
+ *
+ *   npm run selfplay -- variant=giveaway games=400 pairs=owl-owl \
+ *     baseline=b random=6 weights=100,400,1,5
+ *
  * `db` says which side may use the endgame tables: `both` (the default),
  * `none`, or `a`/`b` for one side of every pairing. That is how the
  * tables are measured - the same persona against itself, one side blind:
@@ -62,7 +78,14 @@ import {
   WHITE_WINS,
   statusOf,
 } from '../engine/status.ts'
+import {
+  DEFAULT_WEIGHTS,
+  baselineEval,
+  weights,
+} from '../engine/evalGiveaway.ts'
 import { ttClear } from '../engine/tt.ts'
+import { CHECKERS, GIVEAWAY } from '../engine/variant.ts'
+import type { Variant } from '../engine/variant.ts'
 import { personas } from './personas.ts'
 import type { PersonaId } from './personas.ts'
 import { pickRoot } from './think.ts'
@@ -73,7 +96,12 @@ const MAX_GAME_PLIES = 400
 /** Which side of a pairing plays with the endgame tables. */
 type DbSide = 'both' | 'none' | 'a' | 'b'
 
+/** Which side of a pairing plays поддавки on the old, negated evaluation. */
+type EvalSide = 'none' | 'both' | 'a' | 'b'
+
 type Args = {
+  /** Which game the tournament plays; `checkers` or `giveaway`. */
+  variant: Variant
   games: number
   scale: number
   seed: number
@@ -81,6 +109,13 @@ type Args = {
   /** Games per pairing whose moves are printed as boards. */
   show: number
   db: DbSide
+  /** Side playing on the baseline поддавки evaluation; see `baselineEval`. */
+  baseline: EvalSide
+  /**
+   * `man,king,promotion,tempo` for the поддавки evaluation, so a set can
+   * be tried without editing the engine. Empty leaves it as it ships.
+   */
+  weights: string
   /** Random plies at the start of every game, to vary the openings. */
   random: number
   /** Pieces of the random placement every game starts from; 0 = opening. */
@@ -95,12 +130,15 @@ function parseArgs(): Args {
   const argv =
     (globalThis as { process?: { argv?: string[] } }).process?.argv ?? []
   const args: Args = {
+    variant: CHECKERS,
     games: 20,
     scale: 0.05,
     seed: 1,
     pairs: ['raven-owl', 'owl-fox', 'fox-hare', 'hare-kitten'],
     show: 0,
     db: 'both',
+    baseline: 'none',
+    weights: '',
     random: 0,
     pieces: 0,
     dbA: -1,
@@ -110,12 +148,16 @@ function parseArgs(): Args {
   for (const arg of argv.slice(2)) {
     const [key, value] = arg.split('=')
     if (value === undefined) continue
-    if (key === 'games') args.games = Number(value)
+    if (key === 'variant') {
+      args.variant = value === 'giveaway' ? GIVEAWAY : CHECKERS
+    } else if (key === 'games') args.games = Number(value)
     else if (key === 'scale') args.scale = Number(value)
     else if (key === 'seed') args.seed = Number(value)
     else if (key === 'pairs') args.pairs = value.split(',')
     else if (key === 'show') args.show = Number(value)
     else if (key === 'db') args.db = value as DbSide
+    else if (key === 'baseline') args.baseline = value as EvalSide
+    else if (key === 'weights') args.weights = value
     else if (key === 'random') args.random = Number(value)
     else if (key === 'pieces') args.pieces = Number(value)
     else if (key === 'dbA') args.dbA = Number(value)
@@ -164,6 +206,7 @@ function resultName(status: number): string {
 
 /** One game of a pairing: who plays what, with which tables. */
 type Game = {
+  readonly variant: Variant
   readonly white: PersonaId
   readonly black: PersonaId
   /** Whether side A of the pairing has white in this game. */
@@ -181,6 +224,11 @@ type Game = {
   /** Material each side may look up; 0 is no tables at all. */
   readonly dbWhite: number
   readonly dbBlack: number
+  /** Which colour searches on the baseline поддавки evaluation. */
+  readonly baseWhite: boolean
+  readonly baseBlack: boolean
+  /** The two sides differ, so no score may be carried between them. */
+  readonly splitEval: boolean
   /** Pieces at or below which a move counts as played inside the tables. */
   readonly tablePieces: number
   /** The two sides differ, so the table must not carry scores between them. */
@@ -195,7 +243,7 @@ function play(game: Game): number {
   if (show) console.log(`${formatBoard(p)}\n`)
   for (let ply = 0; ; ply++) {
     const count = generate(p.white, p.black, p.kings, p.side, OUT, 0)
-    const status = statusOf(count, p.side, p.plies)
+    const status = statusOf(count, p.side, p.plies, game.variant)
     if (status !== ONGOING) {
       if (show) console.log(`${resultName(status)} after ${ply} plies\n`)
       return status
@@ -216,11 +264,16 @@ function play(game: Game): number {
       const id = p.side === WHITE ? game.white : game.black
       const persona = personas[id]
       const side = p.side === WHITE ? game.dbWhite : game.dbBlack
-      dbLimit(side < 0 ? persona.endgamePieces : side)
-      // Nothing the tables produced may reach the side playing blind.
-      if (game.splitDb) ttClear()
+      // поддавки never reads the tables; they hold checkers values.
+      dbLimit(
+        game.variant === GIVEAWAY ? 0 : side < 0 ? persona.endgamePieces : side,
+      )
+      baselineEval(p.side === WHITE ? game.baseWhite : game.baseBlack)
+      // Nothing one evaluation produced may reach the side on the other.
+      if (game.splitDb || game.splitEval) ttClear()
       const start = performance.now()
       const r = search(p.white, p.black, p.kings, p.side, p.plies, {
+        variant: game.variant,
         depth: persona.depth,
         budgetMs: Math.max(1, Math.round(persona.budgetMs * game.scale)),
         margin: persona.margin,
@@ -304,17 +357,29 @@ function moveNumber(ply: number, p: BitPosition): string {
 
 function main(): void {
   const args = parseArgs()
-  const tables =
-    args.db === 'none' ? { slices: 0, pieces: 0 } : loadTables(args.dbdir)
+  if (args.weights !== '') {
+    const [man, king, promotion, tempo] = args.weights.split(',').map(Number)
+    weights({
+      man: man ?? DEFAULT_WEIGHTS.man,
+      king: king ?? DEFAULT_WEIGHTS.king,
+      promotion: promotion ?? DEFAULT_WEIGHTS.promotion,
+      tempo: tempo ?? DEFAULT_WEIGHTS.tempo,
+    })
+    console.log(`поддавки weights: ${args.weights}\n`)
+  }
+  // поддавки never probes the tables, so a поддавки run should not load
+  // them either - and should not print a line claiming it did.
+  const useDb = args.db !== 'none' && args.variant === CHECKERS
+  const tables = useDb ? loadTables(args.dbdir) : { slices: 0, pieces: 0 }
   console.log(
     `selfplay: ${args.games} games per pairing, budgets x${args.scale},` +
       ` seed ${args.seed}, ${args.random} random opening plies\n`,
   )
   console.log(
-    args.db === 'none'
-      ? 'endgame tables: off\n'
-      : `endgame tables: ${tables.slices} slices from ${args.dbdir},` +
-          ` ${describeDb(args)}\n`,
+    useDb
+      ? `endgame tables: ${tables.slices} slices from ${args.dbdir},` +
+          ` ${describeDb(args)}\n`
+      : 'endgame tables: off\n',
   )
   console.log(
     '| pairing | wins | draws | losses | depth | depth (other) |' +
@@ -339,6 +404,8 @@ function main(): void {
     }
     const dbA = limitOf(args.db === 'both' || args.db === 'a', args.dbA)
     const dbB = limitOf(args.db === 'both' || args.db === 'b', args.dbB)
+    const baseA = args.baseline === 'both' || args.baseline === 'a'
+    const baseB = args.baseline === 'both' || args.baseline === 'b'
     for (let g = 0; g < args.games; g++) {
       const aIsWhite = g % 2 === 0
       const show = g < args.show
@@ -354,6 +421,7 @@ function main(): void {
           : initialBitPosition()
       if (show) console.log(`start ${formatPos(start)}\n`)
       const result = play({
+        variant: args.variant,
         white: aIsWhite ? a : b,
         black: aIsWhite ? b : a,
         start,
@@ -367,6 +435,9 @@ function main(): void {
         show,
         dbWhite: aIsWhite ? dbA : dbB,
         dbBlack: aIsWhite ? dbB : dbA,
+        baseWhite: aIsWhite ? baseA : baseB,
+        baseBlack: aIsWhite ? baseB : baseA,
+        splitEval: baseA !== baseB,
         // What the tables actually hold, capped by what a side may read.
         tablePieces: Math.min(tables.pieces, Math.max(dbA, dbB, 5)),
         splitDb: dbA !== dbB,

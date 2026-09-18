@@ -1,12 +1,15 @@
 import { memo, useId, useRef, useState } from 'react'
 import type { KeyboardEvent, PointerEvent } from 'react'
 import { t } from '../i18n/index.ts'
+import type { GameVariant } from '../game/types.ts'
 import type { Point } from '../state/stats.ts'
 import './AdvantageChart.css'
 
 type AdvantageChartProps = {
   /** One per position of the game, the opening included. */
   points: ReadonlyArray<Point>
+  /** Which game it was; поддавки reads the same numbers upside down. */
+  variant: GameVariant
 }
 
 /** Drawing space; the chart is laid out here and scaled by the page. */
@@ -22,19 +25,25 @@ const MIN_DOMAIN = 3
  * below it. One series with a sign, so the two fills carry the sign and the
  * line itself stays neutral — colouring the line as well would say the same
  * thing twice, and say it wrong where the line crosses zero.
+ *
+ * At поддавки the material is the same and the lead is the other way
+ * round, so the series is turned over rather than redrawn: up keeps
+ * meaning winning on both screens, which is the only thing a reader
+ * carries over from one game to the other.
  */
-export function AdvantageChart({ points }: AdvantageChartProps) {
+export function AdvantageChart({ points, variant }: AdvantageChartProps) {
   const clipId = useId()
   const svgRef = useRef<SVGSVGElement>(null)
   const [hover, setHover] = useState<number | null>(null)
 
   if (points.length < 2) return null
 
+  const lead = (point: Point) =>
+    variant === 'giveaway' ? -point.advantage : point.advantage
+  const words =
+    variant === 'giveaway' ? t.gameOver.chart.giveaway : t.gameOver.chart
   const last = points.length - 1
-  const domain = Math.max(
-    MIN_DOMAIN,
-    ...points.map((point) => Math.abs(point.advantage)),
-  )
+  const domain = Math.max(MIN_DOMAIN, ...points.map((p) => Math.abs(lead(p))))
   const x = (ply: number) =>
     PAD.left + (ply / last) * (WIDTH - PAD.left - PAD.right)
   const y = (value: number) =>
@@ -44,8 +53,7 @@ export function AdvantageChart({ points }: AdvantageChartProps) {
 
   const line = points
     .map(
-      (point, i) =>
-        `${i === 0 ? 'M' : 'L'}${x(point.ply)} ${y(point.advantage)}`,
+      (point, i) => `${i === 0 ? 'M' : 'L'}${x(point.ply)} ${y(lead(point))}`,
     )
     .join(' ')
   const area = `${line} L${x(last)} ${zero} L${x(0)} ${zero} Z`
@@ -78,7 +86,7 @@ export function AdvantageChart({ points }: AdvantageChartProps) {
   return (
     <figure className="chart">
       <figcaption className="chart__caption">
-        <span className="chart__title">{t.gameOver.chart.title}</span>
+        <span className="chart__title">{words.title}</span>
         <span className="chart__legend">
           <span className="chart__key chart__key--white" aria-hidden="true" />
           {t.gameOver.chart.white}
@@ -93,7 +101,7 @@ export function AdvantageChart({ points }: AdvantageChartProps) {
           viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
           role="img"
           tabIndex={0}
-          aria-label={t.gameOver.chart.description}
+          aria-label={words.description}
           onPointerMove={track}
           onPointerLeave={() => setHover(null)}
           onKeyDown={step}
@@ -183,16 +191,16 @@ export function AdvantageChart({ points }: AdvantageChartProps) {
               y2={HEIGHT - PAD.bottom}
             />
             <circle
-              className={`chart__dot chart__dot--${sideOf(current.advantage)}`}
+              className={`chart__dot chart__dot--${sideOf(lead(current))}`}
               cx={x(current.ply)}
-              cy={y(current.advantage)}
+              cy={y(lead(current))}
               r={5}
             />
           </g>
         </svg>
         <p className="chart__readout" aria-live="polite">
           <span className="chart__readout-value">
-            {t.gameOver.chart.lead(current.advantage)}
+            {t.gameOver.chart.lead(lead(current))}
           </span>
           <span className="chart__readout-move">
             {t.gameOver.chart.afterMove(Math.ceil(current.ply / 2))}
@@ -209,7 +217,11 @@ export function AdvantageChart({ points }: AdvantageChartProps) {
  * It is memoised because the pointer rewrites the reading many times a
  * second and never touches a row of this.
  */
-const PointTable = memo(function PointTable({ points }: AdvantageChartProps) {
+const PointTable = memo(function PointTable({
+  points,
+}: {
+  points: ReadonlyArray<Point>
+}) {
   return (
     // The clipped box is the wrapper, not the table: a table sizes itself
     // to its rows whatever width and height it is given, so hiding one

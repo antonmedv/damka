@@ -21,6 +21,26 @@ describe('startFromQuery', () => {
     })
   })
 
+  it('opens поддавки from a link', () => {
+    const start = startFromQuery('?game=giveaway')
+    expect(start.setup.variant).toBe('giveaway')
+    expect(start.position).toBe(null)
+    // Everything else is the game the player set up last.
+    expect(start.setup.opponentId).toBe(defaultPrefs.opponentId)
+  })
+
+  it('keeps the remembered game when the query says nothing about it', () => {
+    expect(startFromQuery('?vs=owl').setup.variant).toBe('checkers')
+    expect(
+      startFromQuery('?vs=owl', { ...defaultPrefs, variant: 'giveaway' }).setup
+        .variant,
+    ).toBe('giveaway')
+  })
+
+  it('ignores a game nobody plays', () => {
+    expect(startFromQuery('?game=chess')).toEqual(defaultStart)
+  })
+
   it('turns the endgame tables off on request', () => {
     expect(startFromQuery('?db=off').endgameDb).toBe(false)
     expect(startFromQuery('?pos=W:WKa1:BKh8&db=off').endgameDb).toBe(false)
@@ -30,12 +50,14 @@ describe('startFromQuery', () => {
 
   it('starts on the game that was set up last', () => {
     const start = startFromQuery('', {
+      variant: 'checkers',
       opponentId: 'owl',
       color: 'black',
       timeControlId: '7+3',
     })
     expect(start).toEqual({
       setup: {
+        variant: 'checkers',
         opponentId: 'owl',
         humanColor: 'black',
         timeControlId: '7+3',
@@ -58,6 +80,7 @@ describe('startFromQuery', () => {
     const start = startFromQuery('?pos=W:Wd2:Bc3,e3,c5,e5,Kg3')
     expect(start.setup).toEqual({
       ...untimedDefault,
+      variant: 'checkers',
       opponentId: 'friend',
       humanColor: 'both',
     })
@@ -71,11 +94,13 @@ describe('startFromQuery', () => {
   it('takes the opponent and the human colour when they are given', () => {
     expect(startFromQuery('?pos=B:Wc3:Bd4&vs=owl&side=black').setup).toEqual({
       ...untimedDefault,
+      variant: 'checkers',
       opponentId: 'owl',
       humanColor: 'black',
     })
     expect(startFromQuery('?vs=raven').setup).toEqual({
       ...untimedDefault,
+      variant: 'checkers',
       opponentId: 'raven',
     })
     expect(startFromQuery('?side=both').setup).toEqual({
@@ -100,10 +125,15 @@ describe('startFromQuery', () => {
   })
 
   it('keeps the opponent and the colours in step', () => {
-    const friendly = { ...defaultPrefs, opponentId: 'friend' } as const
+    const friendly = {
+      ...defaultPrefs,
+      variant: 'checkers',
+      opponentId: 'friend',
+    } as const
     // A computer asked for by the query takes a colour of its own, even
     // though the remembered game had two humans on one device.
     expect(startFromQuery('?vs=raven', friendly).setup).toEqual({
+      variant: 'checkers',
       opponentId: 'raven',
       humanColor: 'white',
       timeControlId: 'none',
@@ -111,6 +141,7 @@ describe('startFromQuery', () => {
     // And the other way round: a friend plays both colours.
     const alone = { ...defaultPrefs, color: 'black' } as const
     expect(startFromQuery('?vs=friend', alone).setup).toEqual({
+      variant: 'checkers',
       opponentId: 'friend',
       humanColor: 'both',
       timeControlId: 'none',

@@ -3,10 +3,16 @@ import { hashPosition } from './hash.ts'
 import { initialBitPosition } from './position.ts'
 import type { BitPosition } from './position.ts'
 import { createRng, randomPlacement, randomWalk } from './random.ts'
+import { CHECKERS } from './variant.ts'
 import { metaOf } from './tt.ts'
 
 function hash(p: BitPosition): number {
-  return hashPosition(p.white, p.black, p.kings, metaOf(p.side, p.plies))
+  return hashPosition(
+    p.white,
+    p.black,
+    p.kings,
+    metaOf(p.side, p.plies, CHECKERS),
+  )
 }
 
 describe('hashPosition', () => {

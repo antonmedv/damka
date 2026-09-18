@@ -1,10 +1,20 @@
 import { useState } from 'react'
 import { t } from '../i18n/index.ts'
+import type { GameVariant } from '../game/types.ts'
 import { isSoundOn, setSoundOn } from '../sound/sound.ts'
 import './NavBar.css'
 
 /** Games that are planned but not built yet; shown disabled. */
-const upcoming = ['giveaway', 'corners'] as const
+const upcoming = ['corners'] as const
+
+/** Games that can be played, in the order the bar shows them. */
+const playable: ReadonlyArray<GameVariant> = ['checkers', 'giveaway']
+
+/** Where a game lives, so the tab is a link worth copying. */
+function href(variant: GameVariant): string {
+  const base = import.meta.env.BASE_URL
+  return variant === 'checkers' ? base : `${base}?game=giveaway`
+}
 
 /** Line icons on a 16×16 box, taking the button's colour. */
 const iconProps = {
@@ -42,11 +52,23 @@ function Speaker({ on }: { on: boolean }) {
 }
 
 type NavBarProps = {
+  /** The game on the board; its tab is the current one. */
+  current?: GameVariant
+  /**
+   * Asks for a game of another kind. The screen answers by opening the new
+   * game dialog on it rather than switching underneath the players, so the
+   * game in progress survives a tab pressed by accident.
+   */
+  onSelect?: (variant: GameVariant) => void
   /** Turns the board round; missing where there is no board to turn. */
   onFlip?: () => void
 }
 
-export function NavBar({ onFlip }: NavBarProps) {
+export function NavBar({
+  current = 'checkers',
+  onSelect,
+  onFlip,
+}: NavBarProps) {
   const [sound, setSound] = useState(isSoundOn)
 
   function toggleSound() {
@@ -60,17 +82,26 @@ export function NavBar({ onFlip }: NavBarProps) {
       <h1 className="navbar__brand">{t.brand}</h1>
       <nav className="navbar__nav" aria-label={t.nav.games}>
         <ul className="navbar__tabs">
-          <li>
-            <a
-              className="navbar__tab navbar__tab--current"
-              href={import.meta.env.BASE_URL}
-              aria-current="page"
-              // Already here; a real navigation would throw the game away.
-              onClick={(e) => e.preventDefault()}
-            >
-              {t.nav.checkers}
-            </a>
-          </li>
+          {playable.map((game) => {
+            const here = game === current
+            return (
+              <li key={game}>
+                <a
+                  className={`navbar__tab${here ? ' navbar__tab--current' : ''}`}
+                  href={href(game)}
+                  aria-current={here ? 'page' : undefined}
+                  // A real navigation would throw the game away, so the
+                  // href is there to be copied, not to be followed.
+                  onClick={(e) => {
+                    e.preventDefault()
+                    if (!here) onSelect?.(game)
+                  }}
+                >
+                  {t.nav[game]}
+                </a>
+              </li>
+            )
+          })}
           {upcoming.map((game) => (
             <li key={game}>
               <button type="button" className="navbar__tab" disabled>

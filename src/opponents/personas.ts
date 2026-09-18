@@ -4,6 +4,9 @@
  * or long the search runs, how far from the best move the pick may stray,
  * and how much endgame the persona has been taught. Numbers are starting
  * points, checked by `npm run selfplay`.
+ *
+ * One table serves both games. The ladder was measured again at поддавки
+ * rather than assumed to carry over; see `tasks/todo.md`.
  */
 import type { OpponentId } from './opponents.ts'
 
@@ -27,6 +30,9 @@ export type Persona = {
    * the strongest endgame play in the game, from the weakest opponent.
    * The cap keeps the ladder in one piece: a beginner mishandles endings
    * too, and only the birds of prey know them cold.
+   *
+   * Moot at поддавки, where nobody reads them: they hold checkers win and
+   * loss values, which are not that game's.
    */
   readonly endgamePieces: number
 }

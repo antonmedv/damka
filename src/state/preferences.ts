@@ -1,6 +1,6 @@
 import { timeControlById } from '../game/timeControl.ts'
 import type { TimeControlId } from '../game/timeControl.ts'
-import type { Color } from '../game/types.ts'
+import type { Color, GameVariant } from '../game/types.ts'
 import { opponentById, opponents } from '../opponents/opponents.ts'
 import type { OpponentId } from '../opponents/opponents.ts'
 import { defaultSetup } from './gameReducer.ts'
@@ -15,6 +15,7 @@ export type ColorChoice = Color | 'random'
  * "случайно" stays random instead of hardening into the colour it rolled.
  */
 export type GamePrefs = {
+  readonly variant: GameVariant
   readonly opponentId: OpponentId
   readonly color: ColorChoice
   readonly timeControlId: TimeControlId
@@ -23,6 +24,7 @@ export type GamePrefs = {
 const STORAGE_KEY = 'damka.newGame'
 
 export const defaultPrefs: GamePrefs = {
+  variant: defaultSetup.variant,
   opponentId: defaultSetup.opponentId,
   color: choiceOf(defaultSetup.humanColor),
   timeControlId: defaultSetup.timeControlId ?? 'none',
@@ -63,6 +65,7 @@ export function savePrefs(prefs: GamePrefs): void {
 
 export function prefsFrom(setup: GameSetup, color: ColorChoice): GamePrefs {
   return {
+    variant: setup.variant,
     opponentId: setup.opponentId,
     color,
     timeControlId: setup.timeControlId ?? 'none',
@@ -76,6 +79,7 @@ export function setupFrom(
 ): GameSetup {
   const versusComputer = opponentById(prefs.opponentId).kind === 'computer'
   return {
+    variant: prefs.variant,
     opponentId: prefs.opponentId,
     humanColor: versusComputer ? resolveColor(prefs.color, rng) : 'both',
     timeControlId: prefs.timeControlId,
@@ -88,11 +92,14 @@ export function resolveColor(choice: ColorChoice, rng: () => number): Color {
 }
 
 const CHOICES: ReadonlyArray<ColorChoice> = ['white', 'black', 'random']
+const VARIANTS: ReadonlyArray<GameVariant> = ['checkers', 'giveaway']
 
 function sanitize(value: unknown): GamePrefs {
   if (typeof value !== 'object' || value === null) return defaultPrefs
   const stored = value as Record<string, unknown>
   return {
+    variant:
+      VARIANTS.find((v) => v === stored['variant']) ?? defaultPrefs.variant,
     opponentId: opponentId(stored['opponentId']),
     color: CHOICES.find((c) => c === stored['color']) ?? defaultPrefs.color,
     timeControlId: timeControlId(stored['timeControlId']),

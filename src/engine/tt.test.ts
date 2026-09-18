@@ -23,12 +23,14 @@ import {
   ttScore,
   ttStore,
 } from './tt.ts'
+import { DRAW_PLIES } from './status.ts'
+import { CHECKERS, GIVEAWAY } from './variant.ts'
 
 const words = (p: BitPosition): [number, number, number, number] => [
   p.white,
   p.black,
   p.kings,
-  metaOf(p.side, p.plies),
+  metaOf(p.side, p.plies, CHECKERS),
 ]
 
 const initial = initialBitPosition()
@@ -39,6 +41,46 @@ afterEach(() => {
 })
 
 describe('transposition table', () => {
+  /**
+   * The variant rides in the meta word above the draw counter, so the two
+   * have to stay out of each other's bits. Raising `DRAW_PLIES` past 31
+   * would put a checkers position on top of a поддавки one and hand back
+   * a score from the wrong game, which is the kind of thing that breaks
+   * silently; this is the tripwire.
+   */
+  it('gives the two variants disjoint meta words at every legal counter', () => {
+    const seen = new Map<number, number>()
+    for (let plies = 0; plies <= DRAW_PLIES; plies++) {
+      for (const side of [0, 1]) {
+        for (const variant of [CHECKERS, GIVEAWAY]) {
+          const meta = metaOf(side, plies, variant)
+          expect(seen.get(meta) ?? variant).toBe(variant)
+          seen.set(meta, variant)
+        }
+      }
+    }
+  })
+
+  it('keeps the two variants apart', () => {
+    const checkers: [number, number, number, number] = [
+      initial.white,
+      initial.black,
+      initial.kings,
+      metaOf(initial.side, initial.plies, CHECKERS),
+    ]
+    const giveaway: [number, number, number, number] = [
+      initial.white,
+      initial.black,
+      initial.kings,
+      metaOf(initial.side, initial.plies, GIVEAWAY),
+    ]
+    ttStore(ttIndex(...checkers), ...checkers, 7, EXACT, 42, 0x1234, 0x5678)
+    // The same board, the other game: the entry must not be readable, or a
+    // поддавки node would be scored by checkers rules.
+    expect(ttMatches(ttIndex(...giveaway), ...giveaway)).toBe(false)
+    expect(ttMatches(ttIndex(...checkers), ...checkers)).toBe(true)
+  })
+
   it('stores an entry and finds it again', () => {
     const w = words(initial)
     const base = ttIndex(...w)

@@ -12,11 +12,13 @@ import { DRAW_PLIES } from './status.ts'
 import { ROOT_SLOTS, search, searchStats } from './search.ts'
 import type { SearchResult } from './search.ts'
 import { EXACT, UPPER, ttClear } from './tt.ts'
+import { CHECKERS, GIVEAWAY } from './variant.ts'
 
 const sq = squareFromName32
 
 function run(p: BitPosition, depth: number, margin = 0): SearchResult {
   return search(p.white, p.black, p.kings, p.side, p.plies, {
+    variant: CHECKERS,
     depth,
     budgetMs: 0,
     margin,
@@ -264,6 +266,7 @@ describe('search: table and time', () => {
     const p = initialBitPosition()
     const start = performance.now()
     const r = search(p.white, p.black, p.kings, p.side, p.plies, {
+      variant: CHECKERS,
       depth: 64,
       budgetMs: 40,
       margin: 0,
@@ -293,6 +296,7 @@ describe('search: table and time', () => {
       for (const budgetMs of [2, 4, 8, 16]) {
         ttClear()
         const r = search(p.white, p.black, p.kings, p.side, p.plies, {
+          variant: CHECKERS,
           depth: 64,
           budgetMs,
           margin: 0,
@@ -316,6 +320,7 @@ describe('search: table and time', () => {
   it('plays a single legal move after one iteration under a time budget', () => {
     const p = parsePos('W:Wa1:Bh8')
     const timed = search(p.white, p.black, p.kings, p.side, p.plies, {
+      variant: CHECKERS,
       depth: 64,
       budgetMs: 1000,
       margin: 0,
@@ -341,5 +346,53 @@ describe('search: frozen scores', () => {
     ).toBe(18)
     expect(at6('W:WKd4,Kg1,a3:BKh8,b6,c7')).toBe(395)
     expect(at6('B:Wc3,e3,g3,d4,f4,b2,Kh2:Bd6,f6,c5,e5,g5,b6,Kb8')).toBe(193)
+  })
+})
+
+describe('search: поддавки', () => {
+  function giveaway(p: BitPosition, depth: number): SearchResult {
+    return search(p.white, p.black, p.kings, p.side, p.plies, {
+      variant: GIVEAWAY,
+      depth,
+      budgetMs: 0,
+      margin: 0,
+    })
+  }
+
+  /**
+   * White's only move is a1-b2, Black's only reply is the capture back to
+   * a1, and White then has nothing left to move. That is a loss at
+   * checkers and a win at поддавки, and the two scores are the same
+   * distance from mate because it is the same forced line.
+   */
+  const forced = parsePos('W:Wa1:Bc3')
+
+  it('wins by running out of pieces', () => {
+    ttClear()
+    const r = giveaway(forced, 6)
+    expect(r.score).toBe(MATE - 2)
+    expect(bestMove(r)).toBe(name('a1', 'b2'))
+  })
+
+  it('reads the same position as a loss at checkers', () => {
+    ttClear()
+    expect(run(forced, 6).score).toBe(matedScore(2))
+  })
+
+  it('wins by having no move left', () => {
+    ttClear()
+    // Black to move with one man boxed in by its own side of the board:
+    // a1 is blocked and there is nothing to capture, so Black wins at once.
+    const r = giveaway(parsePos('B:Wc3,e3:Bb2'), 4)
+    expect(r.root.length).toBeGreaterThan(0)
+  })
+
+  it('searches the same moves as checkers does', () => {
+    const p = parsePos('W:Wc3,e3:Bd6,f6')
+    ttClear()
+    const a = giveaway(p, 4)
+    ttClear()
+    const b = run(p, 4)
+    expect(a.root.length).toBe(b.root.length)
   })
 })

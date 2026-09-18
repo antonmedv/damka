@@ -31,23 +31,44 @@ const EAGER_PIECES = 4
 
 const loader = createEndgameLoader(import.meta.env.BASE_URL, EAGER_PIECES)
 
+/** Whether this session may read the tables at all; `?db=off` says no. */
+let wanted = false
+let started = false
+
+/**
+ * Brings in the manifest and the small slices, once. Held back until a
+ * game of checkers is actually on, because поддавки never reads them and
+ * the manifest with the four-piece slices is some 650 kB of nothing.
+ */
+function startTables(): void {
+  if (!wanted || started) return
+  started = true
+  void loader.start().catch(() => {
+    // No tables: the search falls back to its evaluation, which is the
+    // behaviour every build had before they existed.
+  })
+}
+
 scope.onmessage = (event) => {
   if ('endgameDb' in event.data) {
-    if (event.data.endgameDb) {
-      void loader.start().catch(() => {
-        // No tables: the search falls back to its evaluation, which is
-        // the behaviour every build had before they existed.
-      })
-    }
+    wanted = event.data.endgameDb
+    // A session opening on checkers gets them while the worker is idle,
+    // which is the whole point of the configuration message.
+    if (event.data.variant !== 'giveaway') startTables()
     return
   }
   const request = event.data
   try {
     scope.postMessage(think(request))
     // Only now: a fetch started before the search would have waited for
-    // it anyway, and the reply would have waited for the fetch.
-    const p = parsePos(request.position)
-    loader.fetchMissed(popcount(p.white | p.black))
+    // it anyway, and the reply would have waited for the fetch. Never for
+    // поддавки, which never reads the tables, so a session that only ever
+    // plays it fetches nothing at all.
+    if (request.variant !== 'giveaway') {
+      startTables()
+      const p = parsePos(request.position)
+      loader.fetchMissed(popcount(p.white | p.black))
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     scope.postMessage({ id: request.id, error: message })

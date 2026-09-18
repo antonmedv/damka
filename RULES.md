@@ -122,3 +122,29 @@ drawCounter >= 30
 A promotion resets the counter because the moving piece was a man.
 
 No other official draw conditions are implemented.
+
+# Поддавки
+
+Поддавки (Russian giveaway checkers) is played with every rule above
+unchanged — the same board, the same men and kings, the same mandatory
+captures with a free choice among complete sequences, the same flying
+kings, the same promotion — and one difference.
+
+## Winning
+
+A player **wins** if, at the start of their turn:
+
+- they have no pieces; or
+- they have no legal moves.
+
+This is the exact inverse of the rule for checkers, and it is the whole of
+the variant. Move generation is identical, which is why both games share
+one generator.
+
+## Draws
+
+The simplified draw rule is unchanged: a draw after 30 consecutive plies in
+which only kings make non-capturing moves.
+
+As in checkers, the loss-before-draw ordering holds: a side with no legal
+move has already won when its turn begins, even on the 30th quiet king ply.

@@ -1,8 +1,14 @@
-import { toBitPosition } from '../engine/adapter.ts'
+import { toBitPosition, toVariant } from '../engine/adapter.ts'
 import { generateDetailed } from '../engine/movegen.ts'
 import { BLACK, WHITE } from '../engine/position.ts'
 import { BLACK_WINS, DRAW, WHITE_WINS, statusOf } from '../engine/status.ts'
-import type { GameStatus, Move, Position, Square } from './types.ts'
+import type {
+  GameStatus,
+  GameVariant,
+  Move,
+  Position,
+  Square,
+} from './types.ts'
 
 /** Positions are immutable, so their move lists can be cached by identity. */
 const cache = new WeakMap<Position, ReadonlyArray<Move>>()
@@ -31,14 +37,20 @@ export function movablePieces(position: Position): Square[] {
 }
 
 /**
- * A side with no legal move (or no pieces) has lost; otherwise the game is
- * drawn once the counter reaches the limit. The engine decides the order;
- * this only maps its result.
+ * A side with no legal move (or no pieces) has lost at checkers and won at
+ * поддавки; otherwise the game is drawn once the counter reaches the
+ * limit. The engine decides the order; this only maps its result.
+ *
+ * The move list above is shared: the variant changes no move, only who the
+ * end of the moves belongs to.
  */
-export function gameStatus(position: Position): GameStatus {
+export function gameStatus(
+  position: Position,
+  variant: GameVariant,
+): GameStatus {
   const side = position.toMove === 'white' ? WHITE : BLACK
   const moveCount = legalMoves(position).length
-  switch (statusOf(moveCount, side, position.drawCounter)) {
+  switch (statusOf(moveCount, side, position.drawCounter, toVariant(variant))) {
     case WHITE_WINS:
       return 'whiteWins'
     case BLACK_WINS:

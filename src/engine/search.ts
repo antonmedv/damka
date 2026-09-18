@@ -6,8 +6,10 @@
  * The position travels as int locals, like `perft`; move lists live in
  * ply-indexed regions of one `Int32Array`. Rules of the tree:
  *
- * - a side without moves has lost, checked before the 30-ply draw
- *   (`statusOf`); a loss at ply `p` scores `matedScore(p)`;
+ * - a side without moves has lost at checkers and won at поддавки,
+ *   checked before the 30-ply draw (`statusOf`); it scores `matedScore(p)`
+ *   or `matingScore(p)` for the ply it happens at, so the shorter win
+ *   wins either way;
  * - a position repeated on the current search path scores a draw. This is
  *   a search heuristic only: the game rules (and the Go reference) know
  *   just the 30-ply rule, under which a king shuffle is drawn anyway. It
@@ -20,6 +22,11 @@
  *   the capture search, where a probe costs more than it saves. A drawn
  *   position keeps a squeezed evaluation (`drawnScore`), so the engine
  *   holds its material where every move draws;
+ * - the variant is a constant of one search, read from `limits` into a
+ *   module local beside `deadline` and the counters rather than carried
+ *   down every recursive call. It decides two things and nothing else:
+ *   which side a position with no moves belongs to, and which evaluation
+ *   a leaf gets. Move generation is shared;
  * - captures are never evaluated: at `depth <= 0` every capture is still
  *   searched (the quiescence search), with no stand-pat because the
  *   capture is mandatory; it ends by itself since material shrinks. One
@@ -48,10 +55,20 @@ import { APPLIED, makeMove } from './apply.ts'
 import { popcount } from './bitboard.ts'
 import { DB_DRAW_BAND, DB_UNKNOWN, dbPieces, dbProbe } from './db.ts'
 import { evaluate } from './eval.ts'
+import { evaluateGiveaway } from './evalGiveaway.ts'
 import { moveCaptureCount, movePromotes } from './move.ts'
 import { MAX_MOVES, MOVE_SLOTS, generate } from './movegen.ts'
-import { DRAW_SCORE, INF, MAX_PLY, isMateScore, matedScore } from './score.ts'
+import {
+  DRAW_SCORE,
+  INF,
+  MAX_PLY,
+  isMateScore,
+  matedScore,
+  matingScore,
+} from './score.ts'
 import { DRAW, ONGOING, statusOf } from './status.ts'
+import { CHECKERS, GIVEAWAY } from './variant.ts'
+import type { Variant } from './variant.ts'
 import {
   EXACT,
   LOWER,
@@ -71,6 +88,8 @@ import {
 } from './tt.ts'
 
 export type Limits = {
+  /** Which game is being searched; no default, see `statusOf`. */
+  readonly variant: Variant
   /** Cap on the search depth in plies. */
   readonly depth: number
   /** Time budget; 0 means fixed depth, fully deterministic. */
@@ -129,6 +148,8 @@ const DONE_IDX = new Int32Array(MAX_MOVES)
 const DONE_SCORE = new Int32Array(MAX_MOVES)
 const DONE_BOUND = new Int32Array(MAX_MOVES)
 
+/** The variant of the search in progress; set by `search`, read by the tree. */
+let variant: Variant = CHECKERS
 let nodes = 0
 let ttProbes = 0
 let ttHits = 0
@@ -154,6 +175,7 @@ export function search(
   plies: number,
   limits: Limits,
 ): SearchResult {
+  variant = limits.variant
   nodes = 0
   ttProbes = 0
   ttHits = 0
@@ -168,10 +190,10 @@ export function search(
   // A finished game offers no move: lost without moves, or drawn by the
   // 30-ply rule, exactly as `status` reports it at the UI boundary.
   const count = generate(white, black, kings, side, STACK, 0)
-  const status = statusOf(count, side, plies)
+  const status = statusOf(count, side, plies, variant)
   if (status !== ONGOING) {
     const root = new Int32Array(0)
-    const score = status === DRAW ? DRAW_SCORE : matedScore(0)
+    const score = status === DRAW ? DRAW_SCORE : noMoveScore(0)
     return { m0: 0, m1: 0, score, depth: 0, nodes, root }
   }
   for (let i = 0; i < count; i++) ROOT_IDX[i] = i
@@ -385,11 +407,11 @@ function negamax(
     if (performance.now() >= deadline) aborted = true
   }
   if (aborted) return 0
-  if (ply >= MAX_PLY) return evaluate(white, black, kings, side)
+  if (ply >= MAX_PLY) return evalOf(white, black, kings, side)
   const base = ply * REGION
   const count = generate(white, black, kings, side, STACK, base)
-  if (count === 0) return matedScore(ply)
-  if (statusOf(count, side, plies) === DRAW) return DRAW_SCORE
+  if (count === 0) return noMoveScore(ply)
+  if (statusOf(count, side, plies, variant) === DRAW) return DRAW_SCORE
   for (let k = ply - 2; k >= 0 && k >= ply - plies; k -= 2) {
     const at = k * 3
     if (
@@ -404,7 +426,9 @@ function negamax(
   // The endgame database holds the exact value of the position, so the
   // node ends here. Never with a capture on the board: captures are
   // mandatory, and the generator leaves those entries as don't-care.
-  const dbMax = dbPieces()
+  // Never in поддавки: the tables hold checkers win/loss values, which
+  // are not the values of this game.
+  const dbMax = variant === GIVEAWAY ? 0 : dbPieces()
   // Not in the capture search: a probe costs about twenty evaluations, and
   // a node one ply from a leaf reads the same value from its parent.
   if (
@@ -421,11 +445,11 @@ function negamax(
     }
   }
   if (depth <= 0) {
-    if (!captures) return evaluate(white, black, kings, side)
+    if (!captures) return evalOf(white, black, kings, side)
     depth = 0
   }
 
-  const meta = metaOf(side, plies)
+  const meta = metaOf(side, plies, variant)
   const entry = ttIndex(white, black, kings, meta)
   let ttM0 = 0
   let ttM1 = 0
@@ -510,6 +534,31 @@ function negamax(
 }
 
 /**
+ * Score for the side with no move left, from its own point of view: the
+ * loss it is at checkers, the win it is at поддавки. This is the whole of
+ * the difference between the two games, as the search sees it.
+ */
+function noMoveScore(ply: number): number {
+  return variant === GIVEAWAY ? matingScore(ply) : matedScore(ply)
+}
+
+/**
+ * The evaluation of the variant being searched. One branch per leaf, on a
+ * value that does not change for the whole search, so the predictor gets
+ * it right every time; the alternative is two copies of the tree.
+ */
+function evalOf(
+  white: number,
+  black: number,
+  kings: number,
+  side: number,
+): number {
+  return variant === GIVEAWAY
+    ? evaluateGiveaway(white, black, kings, side)
+    : evaluate(white, black, kings, side)
+}
+
+/**
  * Score of a position the database calls drawn. It is drawn whatever is
  * played, so every move would score the same and the search would pick
  * any of them - including one that throws a king away in front of the
@@ -523,7 +572,7 @@ function drawnScore(
   kings: number,
   side: number,
 ): number {
-  const score = evaluate(white, black, kings, side) >> 4
+  const score = evalOf(white, black, kings, side) >> 4
   if (score > DB_DRAW_BAND) return DB_DRAW_BAND
   if (score < -DB_DRAW_BAND) return -DB_DRAW_BAND
   return score

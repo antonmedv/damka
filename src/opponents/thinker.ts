@@ -15,7 +15,10 @@ import type {
 } from './think.ts'
 
 /** What a fresh worker is told to get ready. */
-export const defaultConfig: ThinkConfig = { endgameDb: true }
+export const defaultConfig: ThinkConfig = {
+  endgameDb: true,
+  variant: 'checkers',
+}
 
 export interface Thinker {
   /** Resolves with the reply; rejects when the request is cancelled. */

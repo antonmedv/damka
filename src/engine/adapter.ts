@@ -1,9 +1,22 @@
-import type { Board, Move, Piece, Position } from '../game/types.ts'
+import type {
+  Board,
+  GameVariant,
+  Move,
+  Piece,
+  Position,
+} from '../game/types.ts'
 import { fromSquare64, lsb, toSquare64, bit } from './bitboard.ts'
 import { moveFrom, movePromotes, moveTo } from './move.ts'
 import { generateDetailed } from './movegen.ts'
 import { BLACK, WHITE, formatPos } from './position.ts'
 import type { BitPosition } from './position.ts'
+import { CHECKERS, GIVEAWAY } from './variant.ts'
+import type { Variant } from './variant.ts'
+
+/** UI variant → engine variant. */
+export function toVariant(variant: GameVariant): Variant {
+  return variant === 'giveaway' ? GIVEAWAY : CHECKERS
+}
 
 /** UI position → engine position. Light squares must be empty. */
 export function toBitPosition(

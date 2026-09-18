@@ -11,8 +11,16 @@ import type { Banter } from './banter.ts'
 
 const sq = squareFromName
 
-const vsHare: GameSetup = { opponentId: 'hare', humanColor: 'white' }
-const friends: GameSetup = { opponentId: 'friend', humanColor: 'both' }
+const vsHare: GameSetup = {
+  variant: 'checkers',
+  opponentId: 'hare',
+  humanColor: 'white',
+}
+const friends: GameSetup = {
+  variant: 'checkers',
+  opponentId: 'friend',
+  humanColor: 'both',
+}
 
 /** A game standing at `literal`, with the setup it is being played under. */
 function at(literal: string, setup: GameSetup = vsHare): GameState {
@@ -88,6 +96,29 @@ describe('banterOf', () => {
     expect(say(played('W:Wa7:Bh2', 'a7', 'b8'))).toEqual({
       kind: 'remark',
       id: 'praise',
+    })
+  })
+
+  it('turns the same events round at поддавки', () => {
+    const giveaway: GameSetup = { ...vsHare, variant: 'giveaway' }
+    // A pile of pieces taken is a punishment there, not a prize, and it is
+    // the side that had to take them that is sorry about it.
+    expect(say(played('B:Wd4,f6,h2:Bg7', 'g7', 'c3', giveaway))).toEqual({
+      kind: 'remark',
+      id: 'stuffed',
+    })
+    expect(say(played('W:Wb2:Bc3,e5,a7', 'b2', 'f6', giveaway))).toEqual({
+      kind: 'remark',
+      id: 'fed',
+    })
+    // A дамка is a piece nobody wants to be left holding.
+    expect(say(played('B:Wh2:Bb2', 'b2', 'a1', giveaway))).toEqual({
+      kind: 'remark',
+      id: 'burdened',
+    })
+    expect(say(played('W:Wa7:Bh2', 'a7', 'b8', giveaway))).toEqual({
+      kind: 'remark',
+      id: 'unloaded',
     })
   })
 

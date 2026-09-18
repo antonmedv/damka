@@ -12,7 +12,6 @@ import { DirectThinker } from '../opponents/direct.ts'
 import type { Thinker } from '../opponents/thinker.ts'
 import type { GameSetup } from '../state/gameReducer.ts'
 import { Page } from './Page.tsx'
-import { GameScreen } from './GameScreen.tsx'
 import { captureAnimations } from './testAnimations.ts'
 
 /** Sound is decoration; the tests only check when it is asked for. */
@@ -31,13 +30,19 @@ const moveButtons = () =>
   screen.queryAllByRole('button', { name: /^[a-h][1-8][-:][a-h][1-8]/ })
 /** The opponent's speech bubble; the live region repeats what is in it. */
 const bubble = () => document.querySelector('.opponent__bubble')
+/** The move list, which is not the only list on the page: the navbar has tabs. */
+const movesPlayed = () => within(screen.getByRole('list', { name: 'Ходы' }))
 
 /** Shallow, instant and deterministic replies for the persona tests. */
 const shallow = { depth: 2, budgetMs: 0, minThinkMs: 0 }
 const fast = new DirectThinker(shallow)
 /** Two humans: the tests that play both colours use this. */
 const hotSeat = {
-  initialSetup: { opponentId: 'friend', humanColor: 'both' } as GameSetup,
+  initialSetup: {
+    variant: 'checkers',
+    opponentId: 'friend',
+    humanColor: 'both',
+  } as GameSetup,
   thinker: fast,
 }
 
@@ -69,7 +74,7 @@ class ManualThinker implements Thinker {
 describe('GameScreen: tap to move', () => {
   it('shows targets after tapping an own piece', async () => {
     const user = userEvent.setup()
-    render(<GameScreen {...hotSeat} />)
+    render(<Page {...hotSeat} />)
 
     await user.click(square('c3'))
 
@@ -81,7 +86,7 @@ describe('GameScreen: tap to move', () => {
 
   it('moves the piece when a target is tapped and passes the turn', async () => {
     const user = userEvent.setup()
-    render(<GameScreen {...hotSeat} />)
+    render(<Page {...hotSeat} />)
 
     await user.click(square('c3'))
     await user.click(square('d4'))
@@ -102,7 +107,7 @@ describe('GameScreen: tap to move', () => {
 
   it('deselects when a non-target square is tapped', async () => {
     const user = userEvent.setup()
-    render(<GameScreen {...hotSeat} />)
+    render(<Page {...hotSeat} />)
 
     await user.click(square('c3'))
     await user.click(square('f6'))
@@ -115,7 +120,7 @@ describe('GameScreen: tap to move', () => {
 
   it('does nothing when an opponent piece is tapped with no selection', async () => {
     const user = userEvent.setup()
-    render(<GameScreen {...hotSeat} />)
+    render(<Page {...hotSeat} />)
 
     await user.click(square('f6'))
 
@@ -126,7 +131,7 @@ describe('GameScreen: tap to move', () => {
   })
 
   it('marks pieces of the side to move as movable', () => {
-    render(<GameScreen {...hotSeat} />)
+    render(<Page {...hotSeat} />)
     expect(square('c3')).toHaveClass('board__square--movable')
     expect(square('f6')).not.toHaveClass('board__square--movable')
   })
@@ -134,7 +139,7 @@ describe('GameScreen: tap to move', () => {
   it('accepts low-level pointer press and release as a tap', async () => {
     // Proves the pointer API works in this environment before Task 4 relies on it.
     const user = userEvent.setup()
-    render(<GameScreen {...hotSeat} />)
+    render(<Page {...hotSeat} />)
 
     await user.pointer([
       { keys: '[MouseLeft>]', target: square('c3') },
@@ -163,7 +168,7 @@ describe('GameScreen: drag to move', () => {
       return { x: col * 100 + 50, y: row * 100 + 50 }
     }
     const user = userEvent.setup()
-    render(<GameScreen {...hotSeat} />)
+    render(<Page {...hotSeat} />)
 
     await user.pointer([
       { keys: '[MouseLeft>]', target: square('c3'), coords: pt('c3') },
@@ -187,7 +192,7 @@ describe('GameScreen: drag to move', () => {
 describe('GameScreen: captures', () => {
   it('forces the capture and removes the captured piece', async () => {
     const user = userEvent.setup()
-    render(<GameScreen {...hotSeat} />)
+    render(<Page {...hotSeat} />)
     await user.click(square('c3'))
     await user.click(square('d4'))
     await user.click(square('f6'))
@@ -218,7 +223,7 @@ describe('GameScreen: last move', () => {
 
   it('highlights origin and destination after a tap move and slides the piece', async () => {
     const user = userEvent.setup()
-    render(<GameScreen {...hotSeat} />)
+    render(<Page {...hotSeat} />)
 
     await user.click(square('c3'))
     await user.click(square('d4'))
@@ -238,8 +243,12 @@ describe('GameScreen: last move', () => {
     const user = userEvent.setup()
     const thinker = new ManualThinker()
     render(
-      <GameScreen
-        initialSetup={{ opponentId: 'fox', humanColor: 'white' }}
+      <Page
+        initialSetup={{
+          variant: 'checkers',
+          opponentId: 'fox',
+          humanColor: 'white',
+        }}
         thinker={thinker}
       />,
     )
@@ -255,7 +264,7 @@ describe('GameScreen: last move', () => {
   })
 
   it('has no highlight before the first move', () => {
-    render(<GameScreen {...hotSeat} />)
+    render(<Page {...hotSeat} />)
     expect(document.querySelector('.board__square--last-from')).toBeNull()
     expect(document.querySelector('.board__square--last-to')).toBeNull()
   })
@@ -277,7 +286,7 @@ describe('GameScreen: last move', () => {
       return { x: col * 100 + 50, y: row * 100 + 50 }
     }
     const user = userEvent.setup()
-    render(<GameScreen {...hotSeat} />)
+    render(<Page {...hotSeat} />)
 
     await user.pointer([
       { keys: '[MouseLeft>]', target: square('c3'), coords: pt('c3') },
@@ -301,7 +310,7 @@ describe('GameScreen: a position to start from', () => {
 
   it('takes the forced jumps at once and flies the piece over them', async () => {
     const user = userEvent.setup()
-    render(<GameScreen {...hotSeat} initialPosition={loops} />)
+    render(<Page {...hotSeat} initialPosition={loops} />)
 
     await user.click(square('d2'))
     await user.click(square('b4'))
@@ -325,7 +334,7 @@ describe('GameScreen: a position to start from', () => {
 
   it('finishes on the square that tells the loops apart', async () => {
     const user = userEvent.setup()
-    render(<GameScreen {...hotSeat} initialPosition={loops} />)
+    render(<Page {...hotSeat} initialPosition={loops} />)
 
     await user.click(square('d2'))
     await user.click(square('b4'))
@@ -346,13 +355,15 @@ describe('GameScreen: a position to start from', () => {
 describe('GameScreen: move list and undo', () => {
   it('records moves and undoes with the keyboard', async () => {
     const user = userEvent.setup()
-    render(<GameScreen {...hotSeat} />)
+    render(<Page {...hotSeat} />)
 
     await user.click(square('c3'))
     await user.click(square('d4'))
     await user.click(square('f6'))
     await user.click(square('e5'))
-    expect(screen.getByRole('listitem')).toHaveTextContent('1.c3-d4f6-e5')
+    expect(movesPlayed().getByRole('listitem')).toHaveTextContent(
+      '1.c3-d4f6-e5',
+    )
 
     await user.keyboard('{Control>}z{/Control}')
     expect(square('f6')).toHaveAccessibleName('f6, чёрная шашка')
@@ -379,7 +390,7 @@ describe('GameScreen: review mode', () => {
 
   it('shows an earlier position when a move is clicked', async () => {
     const user = userEvent.setup()
-    render(<GameScreen {...hotSeat} />)
+    render(<Page {...hotSeat} />)
     await playThree(user)
 
     await user.click(screen.getByRole('button', { name: 'c3-d4' }))
@@ -396,7 +407,7 @@ describe('GameScreen: review mode', () => {
 
   it('returns to the latest position', async () => {
     const user = userEvent.setup()
-    render(<GameScreen {...hotSeat} />)
+    render(<Page {...hotSeat} />)
     await playThree(user)
     await user.click(screen.getByRole('button', { name: 'c3-d4' }))
 
@@ -411,14 +422,14 @@ describe('GameScreen: review mode', () => {
 
   it('a move made while reviewing replaces the rest of the game', async () => {
     const user = userEvent.setup()
-    render(<GameScreen {...hotSeat} />)
+    render(<Page {...hotSeat} />)
     await playThree(user)
     await user.click(screen.getByRole('button', { name: 'c3-d4' }))
 
     await user.click(square('d6'))
     await user.click(square('c5'))
 
-    const items = screen.getAllByRole('listitem')
+    const items = movesPlayed().getAllByRole('listitem')
     expect(items).toHaveLength(1)
     expect(items[0]).toHaveTextContent('1.c3-d4d6-c5')
     expect(screen.queryByText('просмотр')).toBeNull()
@@ -461,7 +472,7 @@ describe('GameScreen: orientation', () => {
 describe('GameScreen: opponent header', () => {
   it('keeps the bubble empty while the game says nothing', async () => {
     const user = userEvent.setup()
-    render(<GameScreen {...hotSeat} />)
+    render(<Page {...hotSeat} />)
     expect(screen.getByRole('heading', { name: 'Друг рядом' })).toBeVisible()
     expect(bubble()).toBeNull()
     // Drawn nowhere, but still said: the board shows the turn in colour.
@@ -478,7 +489,7 @@ describe('GameScreen: opponent header', () => {
     // The king on h8 blocks White's own capture of g7; once White has moved
     // out of the corner, Black's only reply takes f6 and d4 together.
     const feast = fromBitPosition(parsePos('W:Wd4,f6,h2,Kh8:Bg7'))
-    render(<GameScreen initialPosition={feast} thinker={fast} seed={() => 1} />)
+    render(<Page initialPosition={feast} thinker={fast} seed={() => 1} />)
 
     await user.click(square('h2'))
     await user.click(square('g3'))
@@ -489,7 +500,7 @@ describe('GameScreen: opponent header', () => {
 
 describe('GameScreen: new game', () => {
   it('starts against the fox as white by default', () => {
-    render(<GameScreen thinker={fast} />)
+    render(<Page thinker={fast} />)
     expect(screen.getByRole('heading', { name: 'Лиса' })).toBeInTheDocument()
     expect(
       screen.getAllByRole('button', { name: /^[a-h][1-8],/ })[0],
@@ -498,7 +509,7 @@ describe('GameScreen: new game', () => {
 
   it('starts a new game from the dialog and orients the board', async () => {
     const user = userEvent.setup()
-    render(<GameScreen {...hotSeat} />)
+    render(<Page {...hotSeat} />)
     await user.click(square('c3'))
     await user.click(square('d4'))
 
@@ -517,21 +528,21 @@ describe('GameScreen: new game', () => {
 
   it('keeps the current game when the dialog is cancelled', async () => {
     const user = userEvent.setup()
-    render(<GameScreen {...hotSeat} />)
+    render(<Page {...hotSeat} />)
     await user.click(square('c3'))
     await user.click(square('d4'))
 
     await user.click(screen.getByRole('button', { name: 'Новая игра' }))
     await user.click(screen.getByRole('button', { name: 'Отмена' }))
 
-    expect(screen.getByRole('listitem')).toHaveTextContent('1.c3-d4')
+    expect(movesPlayed().getByRole('listitem')).toHaveTextContent('1.c3-d4')
   })
 })
 
 describe('GameScreen: keyboard play', () => {
   it('moves focus with the arrow keys and moves a piece with Enter', async () => {
     const user = userEvent.setup()
-    render(<GameScreen {...hotSeat} />)
+    render(<Page {...hotSeat} />)
 
     square('c3').focus()
     await user.keyboard('{ArrowUp}')
@@ -549,7 +560,7 @@ describe('GameScreen: keyboard play', () => {
 
   it('keeps focus on the board at the edges', async () => {
     const user = userEvent.setup()
-    render(<GameScreen {...hotSeat} />)
+    render(<Page {...hotSeat} />)
 
     square('a1').focus()
     await user.keyboard('{ArrowLeft}{ArrowDown}')
@@ -558,7 +569,7 @@ describe('GameScreen: keyboard play', () => {
 
   it('deselects with Escape', async () => {
     const user = userEvent.setup()
-    render(<GameScreen {...hotSeat} />)
+    render(<Page {...hotSeat} />)
 
     await user.click(square('c3'))
     expect(square('c3')).toHaveClass('board__square--selected')
@@ -567,7 +578,7 @@ describe('GameScreen: keyboard play', () => {
   })
 
   it('puts only one square in the tab order', () => {
-    render(<GameScreen {...hotSeat} />)
+    render(<Page {...hotSeat} />)
     const inTabOrder = screen
       .getAllByRole('button', { name: /^[a-h][1-8],/ })
       .filter((b) => b.getAttribute('tabindex') !== '-1')
@@ -578,7 +589,7 @@ describe('GameScreen: keyboard play', () => {
 describe('GameScreen: computer opponent', () => {
   it('answers a human move', async () => {
     const user = userEvent.setup()
-    render(<GameScreen thinker={fast} seed={() => 1} />)
+    render(<Page thinker={fast} seed={() => 1} />)
 
     await user.click(square('c3'))
     await user.click(square('d4'))
@@ -591,8 +602,12 @@ describe('GameScreen: computer opponent', () => {
 
   it('opens the game when the human plays black', async () => {
     render(
-      <GameScreen
-        initialSetup={{ opponentId: 'hare', humanColor: 'black' }}
+      <Page
+        initialSetup={{
+          variant: 'checkers',
+          opponentId: 'hare',
+          humanColor: 'black',
+        }}
         thinker={fast}
         seed={() => 1}
       />,
@@ -603,7 +618,7 @@ describe('GameScreen: computer opponent', () => {
   it('says the persona is thinking and blocks the board until the reply', async () => {
     const user = userEvent.setup()
     const manual = new ManualThinker()
-    render(<GameScreen thinker={manual} seed={() => 1} />)
+    render(<Page thinker={manual} seed={() => 1} />)
 
     await user.click(square('c3'))
     await user.click(square('d4'))
@@ -623,7 +638,7 @@ describe('GameScreen: computer opponent', () => {
   it('undo while the persona thinks takes back the human move and cancels', async () => {
     const user = userEvent.setup()
     const manual = new ManualThinker()
-    render(<GameScreen thinker={manual} seed={() => 1} />)
+    render(<Page thinker={manual} seed={() => 1} />)
     await user.click(square('c3'))
     await user.click(square('d4'))
     const stale = manual.requests[0]!
@@ -645,7 +660,7 @@ describe('GameScreen: computer opponent', () => {
 
   it('undo takes back the reply with the human move and redo brings both back', async () => {
     const user = userEvent.setup()
-    render(<GameScreen thinker={fast} seed={() => 1} />)
+    render(<Page thinker={fast} seed={() => 1} />)
     await user.click(square('c3'))
     await user.click(square('d4'))
     await waitFor(() => expect(moveButtons()).toHaveLength(2))
@@ -670,8 +685,12 @@ describe('GameScreen: computer opponent', () => {
   it('plays the opening move under StrictMode when the human is black', async () => {
     render(
       <StrictMode>
-        <GameScreen
-          initialSetup={{ opponentId: 'hare', humanColor: 'black' }}
+        <Page
+          initialSetup={{
+            variant: 'checkers',
+            opponentId: 'hare',
+            humanColor: 'black',
+          }}
           thinker={fast}
           seed={() => 1}
         />
@@ -688,7 +707,7 @@ describe('GameScreen: computer opponent', () => {
       cancel: () => {},
       dispose: () => {},
     }
-    render(<GameScreen thinker={broken} seed={() => 1} />)
+    render(<Page thinker={broken} seed={() => 1} />)
 
     await user.click(square('c3'))
     await user.click(square('d4'))
@@ -711,7 +730,13 @@ describe('GameScreen: computer opponent', () => {
     const errors = vi.spyOn(console, 'error').mockImplementation(() => {})
     // A white move from another position: never legal for Black's reply.
     const opening = thinkWith(
-      { id: 0, position: 'W:Wc3:Bf6', persona: 'hare', seed: 1 },
+      {
+        id: 0,
+        variant: 'checkers',
+        position: 'W:Wc3:Bf6',
+        persona: 'hare',
+        seed: 1,
+      },
       { ...personas.hare, ...shallow },
     ).move
     const stuck: Thinker = {
@@ -727,7 +752,7 @@ describe('GameScreen: computer opponent', () => {
       cancel: () => {},
       dispose: () => {},
     }
-    render(<GameScreen thinker={stuck} seed={() => 1} />)
+    render(<Page thinker={stuck} seed={() => 1} />)
 
     await user.click(square('c3'))
     await user.click(square('d4'))
@@ -741,7 +766,7 @@ describe('GameScreen: computer opponent', () => {
   it('marks the board busy while the persona thinks', async () => {
     const user = userEvent.setup()
     const manual = new ManualThinker()
-    render(<GameScreen thinker={manual} seed={() => 1} />)
+    render(<Page thinker={manual} seed={() => 1} />)
     await user.click(square('c3'))
     await user.click(square('d4'))
     expect(document.querySelector('.board__grid')).toHaveAttribute(
@@ -755,7 +780,7 @@ describe('GameScreen: move sound', () => {
   it('clicks once per move and stays quiet while navigating', async () => {
     const user = userEvent.setup()
     sound.playMove.mockClear()
-    render(<GameScreen {...hotSeat} />)
+    render(<Page {...hotSeat} />)
 
     await user.click(square('c3'))
     await user.click(square('d4'))
@@ -772,6 +797,7 @@ describe('GameScreen: the clock', () => {
   function timed(timeControlId: 'none' | '1+0' | '3+2') {
     return {
       initialSetup: {
+        variant: 'checkers',
         opponentId: 'friend',
         humanColor: 'both',
         timeControlId,
@@ -788,7 +814,7 @@ describe('GameScreen: the clock', () => {
   }
 
   it('shows no readouts in an untimed game', () => {
-    render(<GameScreen {...hotSeat} />)
+    render(<Page {...hotSeat} />)
     expect(screen.queryByText('Время белых')).toBeNull()
   })
 
@@ -797,7 +823,7 @@ describe('GameScreen: the clock', () => {
     // the tick runs for real and only the clock it reads is under control.
     let clock = 0
     const user = userEvent.setup()
-    render(<GameScreen {...timed('3+2')} now={() => clock} />)
+    render(<Page {...timed('3+2')} now={() => clock} />)
     expect(readout('Время белых')).toHaveTextContent('3:00')
     expect(readout('Время чёрных')).toHaveTextContent('3:00')
 
@@ -829,8 +855,9 @@ describe('GameScreen: the clock', () => {
   it('gives the persona a budget out of its own bank', async () => {
     const manual = new ManualThinker()
     render(
-      <GameScreen
+      <Page
         initialSetup={{
+          variant: 'checkers',
           opponentId: 'raven',
           humanColor: 'black',
           timeControlId: '1+0',
@@ -851,8 +878,12 @@ describe('GameScreen: the clock', () => {
   it('sends no budget of its own in an untimed game', async () => {
     const manual = new ManualThinker()
     render(
-      <GameScreen
-        initialSetup={{ opponentId: 'raven', humanColor: 'black' }}
+      <Page
+        initialSetup={{
+          variant: 'checkers',
+          opponentId: 'raven',
+          humanColor: 'black',
+        }}
         thinker={manual}
         seed={() => 1}
       />,
@@ -867,8 +898,9 @@ describe('GameScreen: the clock', () => {
     let clock = 0
     const manual = new ManualThinker()
     render(
-      <GameScreen
+      <Page
         initialSetup={{
+          variant: 'checkers',
           opponentId: 'raven',
           humanColor: 'black',
           timeControlId: '1+0',
@@ -898,7 +930,7 @@ describe('GameScreen: the clock', () => {
   it('ends the game on time and stops taking moves', async () => {
     let clock = 0
     const user = userEvent.setup()
-    render(<GameScreen {...timed('1+0')} now={() => clock} />)
+    render(<Page {...timed('1+0')} now={() => clock} />)
 
     clock = 60_100
     await waitFor(
@@ -920,7 +952,7 @@ describe('GameScreen: result screen', () => {
 
   it('shows the result as soon as the game ends', async () => {
     const user = userEvent.setup()
-    render(<GameScreen {...hotSeat} initialPosition={decided} />)
+    render(<Page {...hotSeat} initialPosition={decided} />)
     await user.click(square('c3'))
     await user.click(square('e5'))
 
@@ -933,7 +965,7 @@ describe('GameScreen: result screen', () => {
 
   it('reopens the result from the bubble once it is closed', async () => {
     const user = userEvent.setup()
-    render(<GameScreen {...hotSeat} initialPosition={decided} />)
+    render(<Page {...hotSeat} initialPosition={decided} />)
     await user.click(square('c3'))
     await user.click(square('e5'))
     await user.click(await screen.findByRole('button', { name: 'Закрыть' }))
@@ -945,7 +977,7 @@ describe('GameScreen: result screen', () => {
 
   it('does not reopen it for stepping back through the finished game', async () => {
     const user = userEvent.setup()
-    render(<GameScreen {...hotSeat} initialPosition={decided} />)
+    render(<Page {...hotSeat} initialPosition={decided} />)
     await user.click(square('c3'))
     await user.click(square('e5'))
     await user.click(await screen.findByRole('button', { name: 'Закрыть' }))
@@ -959,7 +991,7 @@ describe('GameScreen: result screen', () => {
     const user = userEvent.setup()
     // Black's man on a1 has nowhere to go, so either White move ends it.
     const trapped = fromBitPosition(parsePos('W:Wc3:Ba1'))
-    render(<GameScreen {...hotSeat} initialPosition={trapped} />)
+    render(<Page {...hotSeat} initialPosition={trapped} />)
     await user.click(square('c3'))
     await user.click(square('b4'))
     await user.click(await screen.findByRole('button', { name: 'Закрыть' }))
@@ -972,7 +1004,7 @@ describe('GameScreen: result screen', () => {
 
   it('keeps the result out of the bubble while an earlier position is shown', async () => {
     const user = userEvent.setup()
-    render(<GameScreen {...hotSeat} initialPosition={decided} />)
+    render(<Page {...hotSeat} initialPosition={decided} />)
     await user.click(square('c3'))
     await user.click(square('e5'))
     await user.click(await screen.findByRole('button', { name: 'Закрыть' }))
@@ -987,7 +1019,7 @@ describe('GameScreen: result screen', () => {
 
   it('opens the new-game dialog from the result screen', async () => {
     const user = userEvent.setup()
-    render(<GameScreen {...hotSeat} initialPosition={decided} />)
+    render(<Page {...hotSeat} initialPosition={decided} />)
     await user.click(square('c3'))
     await user.click(square('e5'))
     const result = await screen.findByRole('dialog')
@@ -997,5 +1029,54 @@ describe('GameScreen: result screen', () => {
       await screen.findByRole('heading', { name: 'Новая игра' }),
     ).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Победа белых' })).toBeNull()
+  })
+})
+
+describe('GameScreen: поддавки', () => {
+  it('tells the persona which game it is playing', async () => {
+    const user = userEvent.setup()
+    const thinker = new ManualThinker()
+    render(
+      <Page
+        initialSetup={{
+          variant: 'giveaway',
+          opponentId: 'fox',
+          humanColor: 'white',
+        }}
+        thinker={thinker}
+      />,
+    )
+
+    await user.click(square('c3'))
+    await user.click(square('d4'))
+    await waitFor(() => expect(thinker.requests).toHaveLength(1))
+
+    expect(thinker.requests[0]!.request.variant).toBe('giveaway')
+  })
+
+  it('plays a game out to a поддавки win against a persona', async () => {
+    const user = userEvent.setup()
+    render(
+      <Page
+        initialSetup={{
+          variant: 'giveaway',
+          opponentId: 'fox',
+          humanColor: 'white',
+        }}
+        initialPosition={fromBitPosition(parsePos('W:Wa1:Bc3'))}
+        thinker={fast}
+      />,
+    )
+
+    // a1-b2 is White's only move; Black's only reply is the capture that
+    // leaves White with nothing, which is how поддавки is won.
+    await user.click(square('a1'))
+    await user.click(square('b2'))
+
+    const dialog = await screen.findByRole('dialog')
+    expect(
+      within(dialog).getByRole('heading', { name: 'Победа белых' }),
+    ).toBeInTheDocument()
+    expect(within(dialog).getByText('Шашек не осталось')).toBeInTheDocument()
   })
 })

@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { DB_DRAW_BAND, DB_WIN, dbAddSlice, dbClear, dbProbe } from './db.ts'
 import { parsePos } from './position.ts'
 import { search } from './search.ts'
+import { CHECKERS } from './variant.ts'
 import { DRAW_SCORE } from './score.ts'
 import { ttClear } from './tt.ts'
 
@@ -28,6 +29,7 @@ function scoreOf(literal: string, depth: number): number {
   const p = parsePos(`${literal}:0`)
   ttClear()
   return search(p.white, p.black, p.kings, p.side, p.plies, {
+    variant: CHECKERS,
     depth,
     budgetMs: 0,
     margin: 0,

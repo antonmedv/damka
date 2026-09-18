@@ -56,8 +56,18 @@ export function ttEntries(): number {
   return MASK + 1
 }
 
-export function metaOf(side: number, plies: number): number {
-  return side | (plies << 1)
+/**
+ * The fourth position word: side to move, draw counter and variant.
+ *
+ * The variant belongs here because `ttMatches` verifies a hit against the
+ * stored words, so without it a checkers entry and a поддавки entry for
+ * the same position would match each other and hand back a score from the
+ * wrong game. `plies` never reaches `DRAW_PLIES`, which leaves bit 6 free,
+ * so keeping the two games apart costs nothing and needs no one to
+ * remember to clear the table.
+ */
+export function metaOf(side: number, plies: number, variant: number): number {
+  return side | (plies << 1) | (variant << 6)
 }
 
 /** Base slot of the entry for this position; always valid, hit or not. */

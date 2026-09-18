@@ -26,6 +26,8 @@ import { dbAddSlice, dbClear, dbPieces, dbProbe, dbStats } from './db.ts'
 import { createRng, randomPlacement, randomWalk } from './random.ts'
 import { mailboxMoves, mailboxPerft } from './reference/mailbox.ts'
 import { search, searchStats } from './search.ts'
+import type { Limits } from './search.ts'
+import { CHECKERS, GIVEAWAY } from './variant.ts'
 import { ttClear } from './tt.ts'
 
 const WARMUP_MS = 300
@@ -480,7 +482,7 @@ function benchEvaluate(): void {
  * the table save; compare with perft's 35 ns per generate + make.
  */
 function measureSearch(name: string, p: BitPosition, depth: number): Result {
-  const limits = { depth, budgetMs: 0, margin: 0 }
+  const limits: Limits = { variant: CHECKERS, depth, budgetMs: 0, margin: 0 }
   const run = (): number => {
     ttClear()
     const start = performance.now()
@@ -520,6 +522,32 @@ function benchSearch(): void {
     ttClear()
     const start = performance.now()
     const r = search(p.white, p.black, p.kings, p.side, p.plies, {
+      variant: CHECKERS,
+      depth: 64,
+      budgetMs: 1000,
+      margin: 0,
+    })
+    const ms = performance.now() - start
+    const stats = searchStats()
+    const rate = ((100 * stats.ttHits) / Math.max(1, stats.ttProbes)).toFixed(0)
+    console.log(
+      `| ${name} | ${r.depth} | ${r.nodes} | ${format(r.nodes / ms / 1000)} | ${rate}% |`,
+    )
+    sink ^= r.m0
+  }
+
+  // The same fixtures at поддавки. Move generation is shared, so what this
+  // measures is the other evaluation and the other capture ordering: a
+  // node rate far from the checkers one would mean the variant is costing
+  // something it should not.
+  console.log('\n## search: one second per fixture, поддавки\n')
+  console.log('| fixture | depth | nodes | Mnode/s | TT hit rate |')
+  console.log('| --- | ---: | ---: | ---: | ---: |')
+  for (const [name, p] of Object.entries(SEARCH_FIXTURES)) {
+    ttClear()
+    const start = performance.now()
+    const r = search(p.white, p.black, p.kings, p.side, p.plies, {
+      variant: GIVEAWAY,
       depth: 64,
       budgetMs: 1000,
       margin: 0,
@@ -599,7 +627,12 @@ function benchEndgame(): void {
     for (const on of [false, true]) {
       if (on) loadTables()
       else dbClear()
-      const limits = { depth: 64, budgetMs: 1000, margin: 0 }
+      const limits: Limits = {
+        variant: CHECKERS,
+        depth: 64,
+        budgetMs: 1000,
+        margin: 0,
+      }
       ttClear()
       sink ^= search(p.white, p.black, p.kings, p.side, p.plies, limits).m0
       ttClear()

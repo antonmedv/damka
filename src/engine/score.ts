@@ -18,6 +18,16 @@ export function matedScore(ply: number): number {
   return -(MATE - ply)
 }
 
+/**
+ * Score of the side to move when it has won at `ply`: the поддавки mirror
+ * of `matedScore`, where being unable to move is the winning condition. A
+ * shorter win still beats a longer one, so the search converts at once
+ * rather than shuffling.
+ */
+export function matingScore(ply: number): number {
+  return MATE - ply
+}
+
 export function isMateScore(score: number): boolean {
   return score >= MATE_BOUND || score <= -MATE_BOUND
 }

@@ -27,12 +27,58 @@ describe('NavBar', () => {
 
   it('lists upcoming games as disabled with a badge', () => {
     render(<NavBar />)
-    for (const name of ['Поддавки', 'Уголки']) {
-      const tab = screen.getByRole('button', {
-        name: new RegExp(`${name}.*скоро`),
-      })
-      expect(tab).toBeDisabled()
-    }
+    const tab = screen.getByRole('button', { name: /Уголки.*скоро/ })
+    expect(tab).toBeDisabled()
+  })
+
+  it('offers Поддавки as a game that can be played', () => {
+    render(<NavBar />)
+    const tab = screen.getByRole('link', { name: 'Поддавки' })
+    expect(tab).not.toHaveAttribute('aria-current')
+    // The href is worth copying even though the click never follows it.
+    expect(tab).toHaveAttribute(
+      'href',
+      expect.stringContaining('game=giveaway'),
+    )
+  })
+
+  it('marks the game being played, whichever it is', () => {
+    render(<NavBar current="giveaway" />)
+    expect(screen.getByRole('link', { name: 'Поддавки' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    expect(screen.getByRole('link', { name: 'Шашки' })).not.toHaveAttribute(
+      'aria-current',
+    )
+  })
+})
+
+describe('NavBar: choosing a game', () => {
+  it('asks for the game whose tab was pressed', () => {
+    const onSelect = vi.fn()
+    render(<NavBar current="checkers" onSelect={onSelect} />)
+
+    fireEvent.click(screen.getByRole('link', { name: 'Поддавки' }))
+
+    expect(onSelect).toHaveBeenCalledWith('giveaway')
+  })
+
+  it('never navigates away, so the game in progress survives', () => {
+    const onSelect = vi.fn()
+    render(<NavBar current="checkers" onSelect={onSelect} />)
+    const link = screen.getByRole('link', { name: 'Поддавки' })
+    // fireEvent returns false when the default action was prevented.
+    expect(fireEvent.click(link)).toBe(false)
+  })
+
+  it('does not ask again for the game already being played', () => {
+    const onSelect = vi.fn()
+    render(<NavBar current="giveaway" onSelect={onSelect} />)
+
+    fireEvent.click(screen.getByRole('link', { name: 'Поддавки' }))
+
+    expect(onSelect).not.toHaveBeenCalled()
   })
 })
 

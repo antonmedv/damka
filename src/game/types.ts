@@ -39,3 +39,10 @@ export type Position = {
 }
 
 export type GameStatus = 'ongoing' | 'whiteWins' | 'blackWins' | 'draw'
+
+/**
+ * Which game is being played. Both share every rule of movement and
+ * capture; they disagree only on who wins when a side cannot move. See
+ * RULES.md, and `engine/variant.ts` for the form the engine uses.
+ */
+export type GameVariant = 'checkers' | 'giveaway'

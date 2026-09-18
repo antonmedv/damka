@@ -18,24 +18,51 @@ describe('preferences', () => {
   })
 
   it('remembers the last game that was set up', () => {
-    savePrefs({ opponentId: 'owl', color: 'random', timeControlId: '10+5:1+0' })
+    savePrefs({
+      variant: 'checkers',
+      opponentId: 'owl',
+      color: 'random',
+      timeControlId: '10+5:1+0',
+    })
     expect(loadPrefs()).toEqual({
+      variant: 'checkers',
       opponentId: 'owl',
       color: 'random',
       timeControlId: '10+5:1+0',
     })
   })
 
+  it('remembers which game was played', () => {
+    savePrefs({
+      variant: 'giveaway',
+      opponentId: 'owl',
+      color: 'white',
+      timeControlId: 'none',
+    })
+    expect(loadPrefs().variant).toBe('giveaway')
+    expect(setupFrom(loadPrefs()).variant).toBe('giveaway')
+  })
+
+  it('falls back to checkers for a game it does not know', () => {
+    localStorage.setItem(
+      'damka.newGame',
+      JSON.stringify({ ...defaultPrefs, variant: 'chess' }),
+    )
+    expect(loadPrefs().variant).toBe('checkers')
+  })
+
   it('drops a field it can no longer play, keeping the rest', () => {
     localStorage.setItem(
       'damka.newGame',
       JSON.stringify({
+        variant: 'checkers',
         opponentId: 'dragon',
         color: 'black',
         timeControlId: '999+0',
       }),
     )
     expect(loadPrefs()).toEqual({
+      variant: 'checkers',
       opponentId: defaultPrefs.opponentId,
       color: 'black',
       timeControlId: 'none',
@@ -66,11 +93,13 @@ describe('preferences', () => {
 
   it('turns preferences into a game, rolling a random colour', () => {
     const prefs = {
+      variant: 'checkers',
       opponentId: 'owl',
       color: 'random',
       timeControlId: '3+2',
     } as const
     expect(setupFrom(prefs, () => 0.9)).toEqual({
+      variant: 'checkers',
       opponentId: 'owl',
       humanColor: 'black',
       timeControlId: '3+2',
@@ -81,21 +110,37 @@ describe('preferences', () => {
 
   it('hands both colours to the players sharing a device', () => {
     expect(
-      setupFrom({ opponentId: 'friend', color: 'white', timeControlId: 'none' })
-        .humanColor,
+      setupFrom({
+        variant: 'checkers',
+        opponentId: 'friend',
+        color: 'white',
+        timeControlId: 'none',
+      }).humanColor,
     ).toBe('both')
   })
 
   it('keeps the colour that was asked for, not the one it rolled', () => {
     expect(
       prefsFrom(
-        { opponentId: 'fox', humanColor: 'black', timeControlId: '3+2' },
+        {
+          variant: 'checkers',
+          opponentId: 'fox',
+          humanColor: 'black',
+          timeControlId: '3+2',
+        },
         'random',
       ),
-    ).toEqual({ opponentId: 'fox', color: 'random', timeControlId: '3+2' })
+    ).toEqual({
+      variant: 'checkers',
+      opponentId: 'fox',
+      color: 'random',
+      timeControlId: '3+2',
+    })
     expect(
-      prefsFrom({ opponentId: 'fox', humanColor: 'white' }, 'white')
-        .timeControlId,
+      prefsFrom(
+        { variant: 'checkers', opponentId: 'fox', humanColor: 'white' },
+        'white',
+      ).timeControlId,
     ).toBe('none')
   })
 })

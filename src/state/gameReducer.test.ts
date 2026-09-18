@@ -5,6 +5,7 @@ import { pieceAt, squareFromName } from '../game/board.ts'
 import { formatMove } from '../game/notation.ts'
 import { legalMoves } from '../game/moves.ts'
 import { timeControlById } from '../game/timeControl.ts'
+import type { GameVariant } from '../game/types.ts'
 import { MATE_BOUND } from '../engine/score.ts'
 import { DB_DRAW_BAND, DB_WIN, DB_WIN_MIN } from '../engine/db.ts'
 import {
@@ -32,16 +33,27 @@ import { createHistory } from './history.ts'
 const sq = squareFromName
 
 /** A two-human game whose current position is the literal. */
-function stateAt(literal: string): GameState {
+function stateAt(
+  literal: string,
+  variant: GameVariant = 'checkers',
+): GameState {
   return {
-    ...initialState({ opponentId: 'friend', humanColor: 'both' }),
+    ...initialState({
+      variant,
+      opponentId: 'friend',
+      humanColor: 'both',
+    }),
     history: createHistory(fromBitPosition(parsePos(literal))),
   }
 }
 
 /** Two humans, so undo and redo move one ply at a time. */
 function twoHumans(): GameState {
-  return initialState({ opponentId: 'friend', humanColor: 'both' })
+  return initialState({
+    variant: 'checkers',
+    opponentId: 'friend',
+    humanColor: 'both',
+  })
 }
 
 function tapAll(state: GameState, ...squares: string[]): GameState {
@@ -272,7 +284,7 @@ describe('gameReducer: newGame and flipBoard', () => {
     const played = play(initialState(), ['c3', 'd4'], ['f6', 'e5'])
     const s = gameReducer(played, {
       type: 'newGame',
-      setup: { opponentId: 'fox', humanColor: 'black' },
+      setup: { variant: 'checkers', opponentId: 'fox', humanColor: 'black' },
     })
     expect(s.moves).toEqual([])
     expect(s.history.past).toEqual([])
@@ -280,17 +292,29 @@ describe('gameReducer: newGame and flipBoard', () => {
     expect(currentPosition(s)).toEqual(initialState().history.present)
     expect(s.selected).toBeNull()
     expect(s.orientation).toBe('black')
-    expect(s.setup).toEqual({ opponentId: 'fox', humanColor: 'black' })
+    expect(s.setup).toEqual({
+      variant: 'checkers',
+      opponentId: 'fox',
+      humanColor: 'black',
+    })
   })
 
   it('white always moves first regardless of the human colour', () => {
-    const s = initialState({ opponentId: 'fox', humanColor: 'black' })
+    const s = initialState({
+      variant: 'checkers',
+      opponentId: 'fox',
+      humanColor: 'black',
+    })
     expect(currentPosition(s).toMove).toBe('white')
   })
 
   it('two humans start with white at the bottom', () => {
     expect(
-      initialState({ opponentId: 'friend', humanColor: 'both' }).orientation,
+      initialState({
+        variant: 'checkers',
+        opponentId: 'friend',
+        humanColor: 'both',
+      }).orientation,
     ).toBe('white')
   })
 
@@ -467,6 +491,37 @@ describe('gameReducer: entering an ambiguous capture', () => {
   })
 })
 
+describe('gameReducer: поддавки', () => {
+  it('plays a game out to a win by having nothing left', () => {
+    // White's only move is a1-b2; Black's only reply is the capture back
+    // to a1. White is then out of pieces, which is how поддавки is won.
+    let s = stateAt('W:Wa1:Bc3', 'giveaway')
+    expect(statusOf(s)).toBe('ongoing')
+    s = gameReducer(s, { type: 'move', from: sq('a1'), to: sq('b2') })
+    expect(statusOf(s)).toBe('ongoing')
+    s = gameReducer(s, { type: 'move', from: sq('c3'), to: sq('a1') })
+    expect(statusOf(s)).toBe('whiteWins')
+    expect(movable(s)).toEqual([])
+  })
+
+  it('reads the same game as a loss at checkers', () => {
+    let s = stateAt('W:Wa1:Bc3')
+    s = gameReducer(s, { type: 'move', from: sq('a1'), to: sq('b2') })
+    s = gameReducer(s, { type: 'move', from: sq('c3'), to: sq('a1') })
+    expect(statusOf(s)).toBe('blackWins')
+  })
+
+  it('wins for the side that has been blocked', () => {
+    // Black to move, its one man walled in by its own edge: no move, and
+    // at поддавки that is the win rather than the loss.
+    expect(statusOf(stateAt('W:Wa1:Bb2,c3', 'giveaway'))).toBe('whiteWins')
+  })
+
+  it('draws on the same counter as checkers', () => {
+    expect(statusOf(stateAt('W:WKa1:BKh8:30', 'giveaway'))).toBe('draw')
+  })
+})
+
 describe('gameReducer: game over', () => {
   it('reports the result and ignores input', () => {
     const lost = stateAt('W:Wa1:Bb2,c3')
@@ -501,9 +556,13 @@ describe('gameReducer: game over', () => {
 
 describe('gameReducer: computer opponent', () => {
   const vsHare = (humanColor: 'white' | 'black'): GameState =>
-    initialState({ opponentId: 'hare', humanColor })
+    initialState({ variant: 'checkers', opponentId: 'hare', humanColor })
   const hotSeat = (): GameState =>
-    initialState({ opponentId: 'friend', humanColor: 'both' })
+    initialState({
+      variant: 'checkers',
+      opponentId: 'friend',
+      humanColor: 'both',
+    })
   const reply = (state: GameState) => legalMoves(currentPosition(state))[0]!
   const thinkingAfterMove = (): GameState =>
     gameReducer(play(vsHare('white'), ['c3', 'd4']), { type: 'think', id: 1 })
@@ -647,7 +706,12 @@ describe('gameReducer: computer opponent', () => {
 /** Two humans on a 3 + 2 clock, started at `now`. */
 function timed(now = 0): GameState {
   return initialState(
-    { opponentId: 'friend', humanColor: 'both', timeControlId: '3+2' },
+    {
+      variant: 'checkers',
+      opponentId: 'friend',
+      humanColor: 'both',
+      timeControlId: '3+2',
+    },
     undefined,
     now,
   )
@@ -680,7 +744,12 @@ describe('gameReducer: clock', () => {
 
   it('gives each side the clock the control names', () => {
     const state = initialState(
-      { opponentId: 'fox', humanColor: 'black', timeControlId: '10+5:1+0' },
+      {
+        variant: 'checkers',
+        opponentId: 'fox',
+        humanColor: 'black',
+        timeControlId: '10+5:1+0',
+      },
       undefined,
       0,
     )
@@ -840,7 +909,12 @@ describe('gameReducer: clock', () => {
     let s = playAt(timed(0), 'c3', 'd4', 20_000)
     s = gameReducer(s, {
       type: 'newGame',
-      setup: { opponentId: 'friend', humanColor: 'both', timeControlId: '1+0' },
+      setup: {
+        variant: 'checkers',
+        opponentId: 'friend',
+        humanColor: 'both',
+        timeControlId: '1+0',
+      },
       at: 30_000,
     })
     expect(clockView(s, 30_000)?.remaining).toEqual({
@@ -849,7 +923,7 @@ describe('gameReducer: clock', () => {
     })
     s = gameReducer(s, {
       type: 'newGame',
-      setup: { opponentId: 'friend', humanColor: 'both' },
+      setup: { variant: 'checkers', opponentId: 'friend', humanColor: 'both' },
       at: 40_000,
     })
     expect(s.clock).toBe(null)
@@ -913,6 +987,7 @@ describe('gameReducer: the clock along the timeline', () => {
   it('starts a game that is already over with a stopped clock', () => {
     const s = initialState(
       {
+        variant: 'checkers',
         opponentId: 'friend',
         humanColor: 'both',
         timeControlId: '3+2',
@@ -934,7 +1009,12 @@ describe('gameReducer: a decided game and the clock', () => {
   function nearlyDrawn(): GameState {
     return {
       ...initialState(
-        { opponentId: 'friend', humanColor: 'both', timeControlId: '3+2' },
+        {
+          variant: 'checkers',
+          opponentId: 'friend',
+          humanColor: 'both',
+          timeControlId: '3+2',
+        },
         undefined,
         0,
       ),
@@ -977,7 +1057,11 @@ describe('gameReducer: offers', () => {
   /** The persona plays Black and has just moved; `score` is its reading. */
   function judged(literal: string, score: number): GameState {
     return {
-      ...initialState({ opponentId: 'hare', humanColor: 'white' }),
+      ...initialState({
+        variant: 'checkers',
+        opponentId: 'hare',
+        humanColor: 'white',
+      }),
       history: createHistory(fromBitPosition(parsePos(literal))),
       verdict: { ply: 0, score },
     }
@@ -1022,7 +1106,7 @@ describe('gameReducer: offers', () => {
   it('has no voice in a game between two humans', () => {
     const friends = {
       ...judged(shuffling, 0),
-      setup: { opponentId: 'friend', humanColor: 'both' },
+      setup: { variant: 'checkers', opponentId: 'friend', humanColor: 'both' },
     } satisfies GameState
     expect(currentOffer(friends)).toBe(null)
   })
@@ -1075,10 +1159,14 @@ describe('gameReducer: offers', () => {
 
   it('takes the verdict from the reply and drops it on the human move', () => {
     const thinking = gameReducer(
-      play(initialState({ opponentId: 'hare', humanColor: 'white' }), [
-        'c3',
-        'd4',
-      ]),
+      play(
+        initialState({
+          variant: 'checkers',
+          opponentId: 'hare',
+          humanColor: 'white',
+        }),
+        ['c3', 'd4'],
+      ),
       { type: 'think', id: 1 },
     )
     const move = legalMoves(currentPosition(thinking))[0]!
@@ -1098,10 +1186,14 @@ describe('gameReducer: offers', () => {
 
   it('makes the game live again where it was taken back past the agreement', () => {
     const thinking = gameReducer(
-      play(initialState({ opponentId: 'hare', humanColor: 'white' }), [
-        'c3',
-        'd4',
-      ]),
+      play(
+        initialState({
+          variant: 'checkers',
+          opponentId: 'hare',
+          humanColor: 'white',
+        }),
+        ['c3', 'd4'],
+      ),
       { type: 'think', id: 1 },
     )
     const answered = gameReducer(thinking, {
@@ -1125,7 +1217,12 @@ describe('gameReducer: offers on a clock', () => {
   function offered(literal: string, score: number, now = 0): GameState {
     return {
       ...initialState(
-        { opponentId: 'hare', humanColor: 'white', timeControlId: '3+2' },
+        {
+          variant: 'checkers',
+          opponentId: 'hare',
+          humanColor: 'white',
+          timeControlId: '3+2',
+        },
         undefined,
         now,
       ),

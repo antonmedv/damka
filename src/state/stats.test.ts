@@ -12,7 +12,12 @@ const sq = squareFromName
 /** A two-human game starting from the literal, on a clock when asked. */
 function stateAt(literal: string, timeControlId?: TimeControlId): GameState {
   return initialState(
-    { opponentId: 'friend', humanColor: 'both', timeControlId },
+    {
+      variant: 'checkers',
+      opponentId: 'friend',
+      humanColor: 'both',
+      timeControlId,
+    },
     fromBitPosition(parsePos(literal)),
     0,
   )

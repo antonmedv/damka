@@ -18,6 +18,8 @@ import {
   parsePos,
 } from './position.ts'
 import { search } from './search.ts'
+import type { Limits } from './search.ts'
+import { CHECKERS } from './variant.ts'
 import { ttClear } from './tt.ts'
 import { DRAW_SCORE, MATE_BOUND } from './score.ts'
 import { DRAW_PLIES } from './status.ts'
@@ -146,7 +148,7 @@ describe('a damaged table', () => {
 describe('when the tables arrive mid-game', () => {
   /** Six pieces, and the win is beyond a six-ply search without them. */
   const literal = 'B:Wf2,d4,g5:Bb2,d2,c7:0'
-  const limits = { depth: 6, budgetMs: 0, margin: 0 }
+  const limits: Limits = { variant: CHECKERS, depth: 6, budgetMs: 0, margin: 0 }
 
   it('the search stops believing what it worked out without them', () => {
     dbClear()

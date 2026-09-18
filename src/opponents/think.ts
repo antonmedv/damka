@@ -4,20 +4,23 @@
  * Pure and synchronous, so it runs the same inside a worker, in tests and
  * in the self-play tournament.
  */
-import type { Move } from '../game/types.ts'
-import { detailedOf } from '../engine/adapter.ts'
+import type { GameVariant, Move } from '../game/types.ts'
+import { detailedOf, toVariant } from '../engine/adapter.ts'
 import { dbLimit } from '../engine/db.ts'
 import { parsePos } from '../engine/position.ts'
 import { DRAW_SCORE } from '../engine/score.ts'
 import { createRng } from '../engine/random.ts'
 import { ROOT_SLOTS, search } from '../engine/search.ts'
 import { EXACT } from '../engine/tt.ts'
+import { GIVEAWAY } from '../engine/variant.ts'
 import { cappedMs } from './limits.ts'
 import { personas } from './personas.ts'
 import type { Persona, PersonaId } from './personas.ts'
 
 export type ThinkRequest = {
   readonly id: number
+  /** Which game to search; the personas play both. */
+  readonly variant: GameVariant
   /** Engine position literal, e.g. `W:Wa1,Kc3:Bf6,Kh8:12`. */
   readonly position: string
   readonly persona: PersonaId
@@ -49,6 +52,12 @@ export type ThinkResponse = {
 export type ThinkConfig = {
   /** Whether to fetch the endgame tables at all; `?db=off` says no. */
   readonly endgameDb: boolean
+  /**
+   * The game the session opens on. поддавки never reads the tables, so a
+   * session that opens on it does not fetch them up front either; if a
+   * game of checkers is started later, the worker starts them then.
+   */
+  readonly variant: GameVariant
 }
 
 /** Posted by the worker when `think` throws (never for a live game). */
@@ -67,10 +76,13 @@ export function thinkWith(
 ): ThinkResponse {
   const start = performance.now()
   const p = parsePos(request.position)
+  const variant = toVariant(request.variant)
   // What this persona is allowed to look up; the tables are shared, the
-  // permission is not.
-  dbLimit(persona.endgamePieces)
+  // permission is not. поддавки looks up nothing at all: the tables hold
+  // checkers values, which are not the values of that game.
+  dbLimit(variant === GIVEAWAY ? 0 : persona.endgamePieces)
   const result = search(p.white, p.black, p.kings, p.side, p.plies, {
+    variant,
     depth: persona.depth,
     budgetMs: cappedMs(persona.budgetMs, request.budgetMs),
     margin: persona.margin,

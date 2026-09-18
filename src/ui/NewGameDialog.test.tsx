@@ -6,7 +6,11 @@ import { NewGameDialog } from './NewGameDialog.tsx'
 
 function renderDialog(
   rng = () => 0.1,
-  initial: GameSetup = { opponentId: 'hare', humanColor: 'white' },
+  initial: GameSetup = {
+    variant: 'checkers',
+    opponentId: 'hare',
+    humanColor: 'white',
+  },
 ) {
   const onStart = vi.fn()
   const onCancel = vi.fn()
@@ -67,7 +71,12 @@ describe('NewGameDialog', () => {
     await user.click(screen.getByRole('radio', { name: 'Чёрные' }))
     await user.click(screen.getByRole('button', { name: 'Начать' }))
     expect(onStart).toHaveBeenCalledWith(
-      { opponentId: 'owl', humanColor: 'black', timeControlId: 'none' },
+      {
+        variant: 'checkers',
+        opponentId: 'owl',
+        humanColor: 'black',
+        timeControlId: 'none',
+      },
       'black',
     )
   })
@@ -77,7 +86,12 @@ describe('NewGameDialog', () => {
     await user.click(screen.getByRole('radio', { name: 'Случайно' }))
     await user.click(screen.getByRole('button', { name: 'Начать' }))
     expect(onStart).toHaveBeenCalledWith(
-      { opponentId: 'hare', humanColor: 'black', timeControlId: 'none' },
+      {
+        variant: 'checkers',
+        opponentId: 'hare',
+        humanColor: 'black',
+        timeControlId: 'none',
+      },
       'random',
     )
   })
@@ -88,7 +102,12 @@ describe('NewGameDialog', () => {
     expect(screen.queryByRole('radio', { name: 'Белые' })).toBeNull()
     await user.click(screen.getByRole('button', { name: 'Начать' }))
     expect(onStart).toHaveBeenCalledWith(
-      { opponentId: 'friend', humanColor: 'both', timeControlId: 'none' },
+      {
+        variant: 'checkers',
+        opponentId: 'friend',
+        humanColor: 'both',
+        timeControlId: 'none',
+      },
       'white',
     )
   })
@@ -109,13 +128,19 @@ describe('NewGameDialog', () => {
     )
     await user.click(screen.getByRole('button', { name: 'Начать' }))
     expect(onStart).toHaveBeenCalledWith(
-      { opponentId: 'hare', humanColor: 'white', timeControlId: '5+0' },
+      {
+        variant: 'checkers',
+        opponentId: 'hare',
+        humanColor: 'white',
+        timeControlId: '5+0',
+      },
       'white',
     )
   })
 
   it('preselects the time control of the current game', () => {
     renderDialog(undefined, {
+      variant: 'checkers',
       opponentId: 'hare',
       humanColor: 'white',
       timeControlId: '10+5',
@@ -132,7 +157,12 @@ describe('NewGameDialog', () => {
     await fill(user, 'Секунд за ход', '3')
     await user.click(screen.getByRole('button', { name: 'Начать' }))
     expect(onStart).toHaveBeenCalledWith(
-      { opponentId: 'hare', humanColor: 'white', timeControlId: '7+3' },
+      {
+        variant: 'checkers',
+        opponentId: 'hare',
+        humanColor: 'white',
+        timeControlId: '7+3',
+      },
       'white',
     )
   })
@@ -149,7 +179,12 @@ describe('NewGameDialog', () => {
     await fill(user, 'Секунд за ход сопернику', '0')
     await user.click(screen.getByRole('button', { name: 'Начать' }))
     expect(onStart).toHaveBeenCalledWith(
-      { opponentId: 'hare', humanColor: 'white', timeControlId: '10+5:1+0' },
+      {
+        variant: 'checkers',
+        opponentId: 'hare',
+        humanColor: 'white',
+        timeControlId: '10+5:1+0',
+      },
       'white',
     )
   })
@@ -182,6 +217,7 @@ describe('NewGameDialog', () => {
 
   it('opens the own fields on a control it does not offer', () => {
     renderDialog(undefined, {
+      variant: 'checkers',
       opponentId: 'hare',
       humanColor: 'white',
       timeControlId: '3+2',
@@ -194,6 +230,7 @@ describe('NewGameDialog', () => {
 
   it('opens on a hand-made control, split clocks and all', () => {
     renderDialog(undefined, {
+      variant: 'checkers',
       opponentId: 'hare',
       humanColor: 'white',
       timeControlId: '20+0:2+1',
@@ -212,6 +249,7 @@ describe('NewGameDialog', () => {
 
   it('falls back to the untimed game on a control it cannot play', async () => {
     const { onStart, user } = renderDialog(undefined, {
+      variant: 'checkers',
       opponentId: 'hare',
       humanColor: 'white',
       timeControlId: '1000+0',
@@ -221,7 +259,12 @@ describe('NewGameDialog', () => {
     ).toBeChecked()
     await user.click(screen.getByRole('button', { name: 'Начать' }))
     expect(onStart).toHaveBeenCalledWith(
-      { opponentId: 'hare', humanColor: 'white', timeControlId: 'none' },
+      {
+        variant: 'checkers',
+        opponentId: 'hare',
+        humanColor: 'white',
+        timeControlId: 'none',
+      },
       'white',
     )
   })

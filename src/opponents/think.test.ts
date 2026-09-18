@@ -1,14 +1,17 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
 import { fromBitPosition } from '../engine/adapter.ts'
-import { DB_WIN, dbAddSlice, dbClear } from '../engine/db.ts'
+import { DB_WIN, dbAddSlice, dbClear, dbPieces } from '../engine/db.ts'
 import { moveKey } from '../engine/move.ts'
 import { formatPos, initialBitPosition, parsePos } from '../engine/position.ts'
 import { createRng } from '../engine/random.ts'
+import { MATE_BOUND } from '../engine/score.ts'
 import { ROOT_SLOTS, search } from '../engine/search.ts'
+import { CHECKERS } from '../engine/variant.ts'
 import { EXACT, ttClear } from '../engine/tt.ts'
 import { legalMoves } from '../game/moves.ts'
-import { personas } from './personas.ts'
+import { formatMove } from '../game/notation.ts'
+import { personaIds, personas } from './personas.ts'
 import type { Persona } from './personas.ts'
 import { pickRoot, think, thinkWith } from './think.ts'
 
@@ -31,7 +34,13 @@ beforeEach(() => {
 
 describe('think', () => {
   it('answers the request id with a legal move and its search data', () => {
-    const r = think({ id: 7, position: start, persona: 'hare', seed: 1 })
+    const r = think({
+      id: 7,
+      variant: 'checkers',
+      position: start,
+      persona: 'hare',
+      seed: 1,
+    })
     expect(r.id).toBe(7)
     expect(r.depth).toBe(personas.hare.depth)
     expect(r.nodes).toBeGreaterThan(0)
@@ -43,7 +52,14 @@ describe('think', () => {
   it('stops early when the request caps the budget', () => {
     const deep: Persona = { ...personas.raven, depth: 64, budgetMs: 10_000 }
     const capped = thinkWith(
-      { id: 1, position: start, persona: 'raven', seed: 1, budgetMs: 1 },
+      {
+        id: 1,
+        variant: 'checkers',
+        position: start,
+        persona: 'raven',
+        seed: 1,
+        budgetMs: 1,
+      },
       deep,
     )
     expect(capped.depth).toBeLessThan(deep.depth)
@@ -51,12 +67,24 @@ describe('think', () => {
 
   it('picks the same move for the same seed', () => {
     const a = thinkWith(
-      { id: 1, position: start, persona: 'hare', seed: 42 },
+      {
+        id: 1,
+        variant: 'checkers',
+        position: start,
+        persona: 'hare',
+        seed: 42,
+      },
       loose,
     )
     ttClear()
     const b = thinkWith(
-      { id: 2, position: start, persona: 'hare', seed: 42 },
+      {
+        id: 2,
+        variant: 'checkers',
+        position: start,
+        persona: 'hare',
+        seed: 42,
+      },
       loose,
     )
     expect(moveKey(b.move)).toBe(moveKey(a.move))
@@ -67,7 +95,13 @@ describe('think', () => {
     for (let seed = 0; seed < 24; seed++) {
       ttClear()
       const r = thinkWith(
-        { id: seed, position: start, persona: 'hare', seed },
+        {
+          id: seed,
+          variant: 'checkers',
+          position: start,
+          persona: 'hare',
+          seed,
+        },
         loose,
       )
       seen.add(moveKey(r.move))
@@ -80,6 +114,7 @@ describe('think', () => {
       'W:Wa1,c1,e1,b2,f2,a3,c3,e3,g3,d4,h4:Bb6,d6,f6,h6,a7,c7,e7,b8,f8,h8,e5',
     )
     const r = search(p.white, p.black, p.kings, p.side, p.plies, {
+      variant: CHECKERS,
       depth: 4,
       budgetMs: 0,
       margin: loose.margin,
@@ -101,13 +136,20 @@ describe('think', () => {
   it('lets the owl play the best move', () => {
     const p = parsePos('W:WKd4,Kg1,a3:BKh8,b6,c7')
     const expected = search(p.white, p.black, p.kings, p.side, p.plies, {
+      variant: CHECKERS,
       depth: strict.depth,
       budgetMs: 0,
       margin: 0,
     }).score
     ttClear()
     const r = thinkWith(
-      { id: 1, position: formatPos(p), persona: 'owl', seed: 3 },
+      {
+        id: 1,
+        variant: 'checkers',
+        position: formatPos(p),
+        persona: 'owl',
+        seed: 3,
+      },
       strict,
     )
     expect(r.score).toBe(expected)
@@ -117,7 +159,13 @@ describe('think', () => {
     // d6xe7 lands on f8 and promotes; the new king takes g7 and f4 and ends on c1.
     const p = parsePos('W:Wd6:Be7,g7,f4')
     const r = thinkWith(
-      { id: 1, position: formatPos(p), persona: 'owl', seed: 1 },
+      {
+        id: 1,
+        variant: 'checkers',
+        position: formatPos(p),
+        persona: 'owl',
+        seed: 1,
+      },
       strict,
     )
     expect(r.move.promotes).toBe(true)
@@ -129,7 +177,13 @@ describe('think', () => {
   it('refuses a position without moves', () => {
     expect(() =>
       thinkWith(
-        { id: 1, position: 'W:W:Bd4', persona: 'owl', seed: 1 },
+        {
+          id: 1,
+          variant: 'checkers',
+          position: 'W:W:Bd4',
+          persona: 'owl',
+          seed: 1,
+        },
         strict,
       ),
     ).toThrow(/no legal moves/)
@@ -138,7 +192,13 @@ describe('think', () => {
   it('refuses a position drawn by the 30-ply rule', () => {
     expect(() =>
       thinkWith(
-        { id: 1, position: 'W:WKa1:Bc3:30', persona: 'owl', seed: 1 },
+        {
+          id: 1,
+          variant: 'checkers',
+          position: 'W:WKa1:Bc3:30',
+          persona: 'owl',
+          seed: 1,
+        },
         strict,
       ),
     ).toThrow(/drawn position/)
@@ -194,7 +254,7 @@ describe('the endgame tables a persona may read', () => {
 
   function score(persona: Persona): number {
     return thinkWith(
-      { id: 1, position: long, persona: 'fox', seed: 1 },
+      { id: 1, variant: 'checkers', position: long, persona: 'fox', seed: 1 },
       persona,
     ).score
   }
@@ -212,5 +272,70 @@ describe('the endgame tables a persona may read', () => {
     // can find it.
     expect(score(taught)).toBeGreaterThan(DB_WIN - 64)
     expect(score(untaught)).toBeLessThan(DB_WIN - 64)
+  })
+})
+
+describe('think: поддавки', () => {
+  /** Shallow, so the whole ladder answers inside one test. */
+  const quick = { depth: 4, budgetMs: 0, minThinkMs: 0 }
+
+  it('answers with a legal move for every persona', () => {
+    const legal = legalMoves(fromBitPosition(initialBitPosition())).map(moveKey)
+    for (const id of personaIds) {
+      const r = thinkWith(
+        { id: 1, variant: 'giveaway', position: start, persona: id, seed: 3 },
+        { ...personas[id], ...quick },
+      )
+      expect(legal).toContain(moveKey(r.move))
+    }
+  })
+
+  it('looks nothing up in the endgame tables', () => {
+    // They hold checkers win and loss values, which are not this game's,
+    // so the personas allowed to read them must be refused here.
+    dbClear()
+    for (const name of readdirSync('public/db/')) {
+      if (name.endsWith('.bin')) dbAddSlice(readFileSync(`public/db/${name}`))
+    }
+    const position = 'W:WKa1,c3:BKh8'
+    for (const id of ['fox', 'owl', 'raven'] as const) {
+      const request = { id: 1, position, persona: id, seed: 1 }
+      thinkWith(
+        { ...request, variant: 'giveaway' },
+        { ...personas[id], ...quick },
+      )
+      expect(dbPieces()).toBe(0)
+      // The same persona on the same board does read them at checkers, so
+      // the zero above is this game's doing and not an empty table.
+      thinkWith(
+        { ...request, variant: 'checkers' },
+        { ...personas[id], ...quick },
+      )
+      expect(dbPieces()).toBeGreaterThan(0)
+    }
+    dbClear()
+  })
+
+  it('plays the winning move where checkers would call it a loss', () => {
+    // a1-b2 forces the capture that leaves White with nothing to move,
+    // which is how поддавки is won. The score says so: a win, not a loss.
+    const request = {
+      id: 1,
+      position: 'W:Wa1:Bc3',
+      persona: 'raven',
+      seed: 1,
+    } as const
+    const won = thinkWith(
+      { ...request, variant: 'giveaway' },
+      { ...personas.raven, ...quick, depth: 6 },
+    )
+    expect(formatMove(won.move)).toBe('a1-b2')
+    expect(won.score).toBeGreaterThan(MATE_BOUND)
+
+    const lost = thinkWith(
+      { ...request, variant: 'checkers' },
+      { ...personas.raven, ...quick, depth: 6 },
+    )
+    expect(lost.score).toBeLessThan(-MATE_BOUND)
   })
 })
