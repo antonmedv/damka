@@ -5,7 +5,7 @@
   grid-template-columns: var(--rail) minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr) var(--rail);
   width: 100%;
-  max-width: calc(var(--board-size, min(100dvh - 15rem, 720px)) + var(--rail));
+  max-width: calc(var(--board-size, min(100dvh - 16rem, 720px)) + var(--rail));
   min-width: 0;
   user-select: none;
   -webkit-user-select: none;

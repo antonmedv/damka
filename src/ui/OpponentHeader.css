@@ -5,6 +5,12 @@
   align-items: center;
   gap: 0.5rem 0.75rem;
   width: 100%;
+  /* What a bubble is made of; the row that holds it is sized from the
+     same numbers, so the two cannot drift apart. */
+  --bubble-pad: 0.35rem;
+  --bubble-gap: 0.6rem;
+  --bubble-line: 1.125rem;
+  --answer-height: 1.9rem;
 }
 
 .opponent__avatar {
@@ -63,16 +69,21 @@
 
 /* Live region for everything the opponent says: a row of its own under
    the face, at every width, so a bubble with answers in it has the whole
-   panel to lay them out in. Empty most of the time, and holding its height
-   so the board below never jumps. */
+   panel to lay them out in. Empty most of the time, and always as tall as
+   the tallest thing it can show, so the board below never jumps: that is
+   the offer, a line of question with its answers wrapped underneath. A
+   bubble hangs from the top of the row, where its tail meets the face. */
 .opponent__say {
   grid-column: 1 / -1;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.5rem;
   margin: 0;
   min-width: 0;
-  min-height: 2.25rem;
+  min-height: calc(
+    2 * var(--bubble-pad) + var(--bubble-line) + var(--bubble-gap) +
+      var(--answer-height)
+  );
 }
 
 /* The line itself: a speech bubble with a tail up towards the avatar. */
@@ -80,15 +91,17 @@
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: var(--bubble-gap);
   flex-wrap: wrap;
   max-width: 100%;
   border-radius: 10px;
-  padding: 0.35rem 0.7rem;
+  padding: var(--bubble-pad) 0.7rem;
   background: var(--accent);
   color: var(--accent-ink);
   font-size: 0.9rem;
   font-weight: 600;
+  /* Fixed rather than the font's own, so a line has a known height. */
+  line-height: var(--bubble-line);
   text-align: left;
 }
 
@@ -135,7 +148,7 @@
 .opponent__decline {
   font-size: 0.8rem;
   padding: 0.2rem 0.55rem;
-  min-height: 1.9rem;
+  min-height: var(--answer-height);
   white-space: nowrap;
 }
 

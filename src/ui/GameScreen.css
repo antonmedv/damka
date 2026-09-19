@@ -1,5 +1,5 @@
 .game {
-  --board-chrome: 15rem;
+  --board-chrome: 16rem;
   --board-cap: 720px;
   /* One square edge, small enough to fit the viewport height with the
      navbar, page padding and credit line around it. */
@@ -8,7 +8,6 @@
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas:
     'header'
-    'clocks'
     'board'
     'panel';
   gap: 1rem;
@@ -30,14 +29,20 @@
 }
 
 /* The readouts and their gap come off the height the board may take; the
-   strip is shorter on a phone, where the two of them sit side by side. */
+   strip is shorter on a phone, where the two of them sit side by side. The
+   row exists only on a clock: an empty row would still cost its gaps. */
 .game--timed {
-  --board-chrome: 19rem;
+  --board-chrome: 21rem;
+  grid-template-areas:
+    'header'
+    'clocks'
+    'board'
+    'panel';
 }
 
 @media (min-width: 481px) {
   .game--timed {
-    --board-chrome: 21rem;
+    --board-chrome: 23rem;
   }
 }
 
@@ -84,10 +89,9 @@
     grid-template-columns: minmax(0, 1fr) var(--panel-width);
     /* The panel row takes what the board leaves over the header and the
        clocks, and never less than a toolbar and a move or two. */
-    grid-template-rows: auto auto minmax(7rem, 1fr);
+    grid-template-rows: auto minmax(7rem, 1fr);
     grid-template-areas:
       'board header'
-      'board clocks'
       'board panel';
     align-items: start;
     gap: 1rem 1.5rem;
@@ -121,6 +125,11 @@
   /* Beside the board the clocks cost no height, so it may grow as before. */
   .game--timed {
     --board-chrome: 10.5rem;
+    grid-template-rows: auto auto minmax(7rem, 1fr);
+    grid-template-areas:
+      'board header'
+      'board clocks'
+      'board panel';
   }
 
   /* No cap of its own: the list grows with the moves and, once they fill
