@@ -1,22 +1,8 @@
 /// <reference types="vitest/config" />
 import react from '@vitejs/plugin-react'
-import { execSync } from 'node:child_process'
 import { defineConfig, type Plugin } from 'vite'
 
 const METRIKA_ID = 112670891
-
-// Short commit hash, attached to rrweb session recordings as `app_version`.
-function gitCommit(): string {
-  try {
-    return execSync('git rev-parse --short HEAD', {
-      stdio: ['ignore', 'pipe', 'ignore'],
-    })
-      .toString()
-      .trim()
-  } catch {
-    return 'unknown'
-  }
-}
 
 // Injected on build only, so dev and preview runs stay out of the stats.
 function yandexMetrika(): Plugin {
@@ -53,9 +39,6 @@ function yandexMetrika(): Plugin {
 export default defineConfig({
   // GitHub Pages serves the app from /damka/; the rsync deploy serves it from the root.
   base: process.env.BASE_PATH ?? '/',
-  define: {
-    __APP_VERSION__: JSON.stringify(gitCommit()),
-  },
   plugins: [react(), yandexMetrika()],
   test: {
     environment: 'jsdom',
@@ -66,12 +49,7 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'html'],
       include: ['src/**/*.{ts,tsx}'],
-      exclude: [
-        'src/**/*.test.{ts,tsx}',
-        'src/test/**',
-        'src/main.tsx',
-        'src/analytics/**',
-      ],
+      exclude: ['src/**/*.test.{ts,tsx}', 'src/test/**', 'src/main.tsx'],
     },
   },
 })
