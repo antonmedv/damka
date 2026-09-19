@@ -35,6 +35,8 @@ type BoardProps = {
   movable?: ReadonlyArray<SquareIndex>
   /** Highlighted as the move that produced this position. */
   lastMove?: Move | null
+  /** Men late to leave home at уголки, ringed as a warning. */
+  overdue?: ReadonlyArray<SquareIndex>
   /** The piece at the end of this flight is flown in along its path. */
   slide?: Flight | null
   /** An earlier position is displayed. */
@@ -69,6 +71,7 @@ export function Board({
   targets = [],
   movable,
   lastMove = null,
+  overdue = [],
   slide = null,
   reviewing = false,
   busy = false,
@@ -179,6 +182,7 @@ export function Board({
               lastFrom={lastMove?.from === square}
               lastTo={lastMove?.to === square}
               lastPath={lastPath.includes(square)}
+              overdue={overdue.includes(square)}
               arriving={slide !== null && flightTo(slide) === square}
               tabIndex={square === focused ? 0 : -1}
               onFocus={onSquareFocus}

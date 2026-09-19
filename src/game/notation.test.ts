@@ -35,6 +35,17 @@ describe('formatMove', () => {
     }
     expect(formatMove(capture)).toBe('c3:e5:g7')
   })
+
+  it('writes every landing square of an уголки chain with dashes', () => {
+    const chain: Move = {
+      from: squareFromName('a1'),
+      to: squareFromName('c5'),
+      captures: [],
+      promotes: false,
+      path: ['a3', 'a5', 'c5'].map(squareFromName),
+    }
+    expect(formatMove(chain)).toBe('a1-a3-a5-c5')
+  })
 })
 
 describe('movePairs', () => {

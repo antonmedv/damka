@@ -61,4 +61,4 @@ the numbers, update the README.
 - After 2: a giveaway mate-in-N is found; checkers tests unchanged; `npm run bench` flat.
 - After 4: `npm run bench` for both variants recorded.
 - After 7: a giveaway game played end to end in the browser.
-- After 8: self-play tables in `tasks/todo.md`.
+- After 8: self-play tables in `tasks/todo-giveaway.md`.

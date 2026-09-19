@@ -148,3 +148,64 @@ which only kings make non-capturing moves.
 
 As in checkers, the loss-before-draw ordering holds: a side with no legal
 move has already won when its turn begins, even on the 30th quiet king ply.
+
+# Уголки
+
+Уголки (Russian corners) is a different game on the same board: a race,
+not a fight. Nothing is ever captured, there are no kings, and every square
+of the board is in play, light ones included.
+
+## Board
+
+- 8×8 board; all 64 squares are used.
+- Each player has 9 men, set up in a 3×3 corner called the player's
+  **home**: White on a1–c3, Black on f6–h8.
+- White moves first.
+- A player's **target** is the opponent's home.
+
+## Moves
+
+One man moves per turn, in one of two ways:
+
+- **Step**: to an adjacent empty square, left, right, up or down. Never
+  diagonally.
+- **Jump**: over an adjacent man of either colour, in a straight line left,
+  right, up or down, onto the empty square directly beyond it. From the
+  landing square the same man may jump again, in any of the four
+  directions, as many times as there are jumps to make.
+
+The player chooses where a chain of jumps ends: stopping after any landing
+square is allowed. A man may not end its move where it started. Jumped men
+stay where they are; nothing is captured.
+
+This is the "classical" game of the Russian tradition. The diagonal
+variant, in which men also step and jump diagonally, is not played here.
+
+## Winning
+
+The player who first has all nine men in the target wins.
+
+White moves first, so Black gets one answer: if White fills the target and
+Black fills its own target with the very next move, the game is a **draw**.
+
+## Blocking
+
+A man left at home forever would keep the opponent from ever finishing, so
+the game does not allow it:
+
+- Once both players have made 40 moves, a player who has a man in their
+  own home **loses**. Moving a man back into one's own home after that
+  point loses in the same way. If both have men at home at that moment,
+  the game is a draw.
+- Once both players have made 80 moves and nobody has won, the game ends:
+  the player with more men in the target wins, and an equal count is a
+  draw.
+- A player with no legal move loses. This is possible in principle and
+  never happens in practice.
+
+Both limits are counted from the position the game started from.
+
+## Notation
+
+`a3-a4` is a step. A chain of jumps lists every landing square:
+`a1-a3-c3`.

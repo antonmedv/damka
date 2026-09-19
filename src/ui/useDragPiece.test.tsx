@@ -20,7 +20,7 @@ function renderBoard() {
   const onMove = vi.fn()
   render(
     <Board
-      position={initialPosition()}
+      position={initialPosition('checkers')}
       orientation="white"
       selected={null}
       targets={[squareFromName('d4'), squareFromName('b4')]}
@@ -252,7 +252,7 @@ describe('grab offset and drop tolerance', () => {
     const onMove = vi.fn()
     render(
       <Board
-        position={initialPosition()}
+        position={initialPosition('checkers')}
         orientation="white"
         targets={[squareFromName('a5')]}
         onMove={onMove}

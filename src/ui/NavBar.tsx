@@ -1,19 +1,14 @@
 import { useState } from 'react'
 import { t } from '../i18n/index.ts'
+import { gameVariants } from '../game/types.ts'
 import type { GameVariant } from '../game/types.ts'
 import { isSoundOn, setSoundOn } from '../sound/sound.ts'
 import './NavBar.css'
 
-/** Games that are planned but not built yet; shown disabled. */
-const upcoming = ['corners'] as const
-
-/** Games that can be played, in the order the bar shows them. */
-const playable: ReadonlyArray<GameVariant> = ['checkers', 'giveaway']
-
 /** Where a game lives, so the tab is a link worth copying. */
 function href(variant: GameVariant): string {
   const base = import.meta.env.BASE_URL
-  return variant === 'checkers' ? base : `${base}?game=giveaway`
+  return variant === 'checkers' ? base : `${base}?game=${variant}`
 }
 
 /** Line icons on a 16×16 box, taking the button's colour. */
@@ -82,7 +77,7 @@ export function NavBar({
       <h1 className="navbar__brand">{t.brand}</h1>
       <nav className="navbar__nav" aria-label={t.nav.games}>
         <ul className="navbar__tabs">
-          {playable.map((game) => {
+          {gameVariants.map((game) => {
             const here = game === current
             return (
               <li key={game}>
@@ -102,14 +97,6 @@ export function NavBar({
               </li>
             )
           })}
-          {upcoming.map((game) => (
-            <li key={game}>
-              <button type="button" className="navbar__tab" disabled>
-                {t.nav[game]}
-                <span className="navbar__soon">{t.nav.soon}</span>
-              </button>
-            </li>
-          ))}
         </ul>
       </nav>
       <div className="navbar__tools">

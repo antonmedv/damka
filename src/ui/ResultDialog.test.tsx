@@ -1,6 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
+import { parseCorners } from '../corners/position.ts'
 import { fromBitPosition } from '../engine/adapter.ts'
 import { parsePos } from '../engine/position.ts'
 import { squareFromName } from '../game/board.ts'
@@ -205,5 +206,90 @@ describe('ResultDialog', () => {
       />,
     )
     expect(screen.queryByRole('heading')).not.toBeInTheDocument()
+  })
+})
+
+describe('ResultDialog: уголки', () => {
+  const race: GameSetup = {
+    variant: 'corners',
+    opponentId: 'friend',
+    humanColor: 'both',
+  }
+
+  function raceAt(literal: string): GameState {
+    return initialState(race, parseCorners(literal), 0)
+  }
+
+  it('says the target was filled and counts jumps rather than captures', () => {
+    const state = play(
+      raceAt('W:Wf6,g6,h6,f7,g7,h7,g8,h8,e8:Bd4,d5,d6,e4,e5,e6,a1,b1,c1'),
+      ['e8', 'f8'],
+      ['d4', 'd3'],
+    )
+    show(state)
+    expect(
+      screen.getByRole('heading', { name: 'Победа белых' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Все шашки в доме соперника')).toBeInTheDocument()
+    expect(row('Ходов с прыжками')).toEqual(['0', '0'])
+    expect(row('Самая длинная цепочка')).toEqual(['—', '—'])
+    expect(screen.queryByText('Взято шашек')).toBeNull()
+    expect(screen.getByText('Перевес в гонке')).toBeInTheDocument()
+  })
+
+  it('names a draw where both filled their targets on one move', () => {
+    const state = play(
+      raceAt('W:Wf6,g6,h6,f7,g7,h7,g8,h8,e8:Ba1,b1,c1,a2,b2,c2,a3,b3,d3'),
+      ['e8', 'f8'],
+      ['d3', 'c3'],
+    )
+    show(state)
+    expect(screen.getByRole('heading', { name: 'Ничья' })).toBeInTheDocument()
+    expect(
+      screen.getByText('Оба заняли дом соперника на одном ходу'),
+    ).toBeInTheDocument()
+  })
+
+  it('names the man the blocking rule caught and shows the chain length', () => {
+    const state = play(raceAt('B:Wa1,d4:Bd5,c7:79'), ['d5', 'd3'])
+    show(state)
+    expect(
+      screen.getByRole('heading', { name: 'Победа чёрных' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('Шашка a1 осталась дома после сорокового хода'),
+    ).toBeInTheDocument()
+    expect(row('Самая длинная цепочка')).toEqual(['—', '1 прыжок'])
+  })
+
+  it('lists every man the blocking rule caught', () => {
+    show(play(raceAt('B:Wa1,b2,c3,d4:Bd5,c7:79'), ['d5', 'd3']))
+    expect(
+      screen.getByText('Шашки a1, b2 и c3 остались дома после сорокового хода'),
+    ).toBeInTheDocument()
+  })
+
+  it('declines the squares left for the table and for the reading', () => {
+    // Black finishes with d3-c3; White has 21 squares left to walk.
+    const state = play(
+      raceAt('B:Wc4,c5,c6,d4,d5,d6,f8,g8,h8:Ba1,b1,c1,a2,b2,c2,a3,b3,d3'),
+      ['d3', 'c3'],
+    )
+    show(state)
+    expect(screen.getByText('Чёрные впереди на 21 клетку')).toBeInTheDocument()
+    const table = screen.getByRole('table', {
+      name: 'Осталось пройти после каждого полухода',
+    })
+    expect(within(table).getAllByText('21 клетка')).toHaveLength(2)
+    expect(within(table).getByText('1 клетка')).toBeInTheDocument()
+    expect(within(table).getByText('0 клеток')).toBeInTheDocument()
+  })
+
+  it('names nobody when the rule caught both sides', () => {
+    show(play(raceAt('B:Wa1,d4:Bd5,h8:79'), ['d5', 'd3']))
+    expect(screen.getByRole('heading', { name: 'Ничья' })).toBeInTheDocument()
+    expect(
+      screen.getByText('У обоих шашки остались дома после сорокового хода'),
+    ).toBeInTheDocument()
   })
 })

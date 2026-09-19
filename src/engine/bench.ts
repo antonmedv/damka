@@ -29,6 +29,25 @@ import { search, searchStats } from './search.ts'
 import type { Limits } from './search.ts'
 import { CHECKERS, GIVEAWAY } from './variant.ts'
 import { ttClear } from './tt.ts'
+import {
+  BLACK as CORNERS_BLACK,
+  WHITE as CORNERS_WHITE,
+  initialPosition as cornersOpening,
+  load as loadCorners,
+} from '../corners/board.ts'
+import { evaluate as evaluateCorners } from '../corners/eval.ts'
+import {
+  MAX_MOVES as CORNERS_MAX_MOVES,
+  generate as generateCorners,
+} from '../corners/movegen.ts'
+import { randomWalk as cornersWalk } from '../corners/random.ts'
+import {
+  search as searchCorners,
+  searchStats as cornersStats,
+} from '../corners/search.ts'
+import { statusOf as cornersStatusOf } from '../corners/status.ts'
+import { ttClear as cornersTtClear } from '../corners/tt.ts'
+import type { Position } from '../game/types.ts'
 
 const WARMUP_MS = 300
 const SAMPLE_MS = 150
@@ -651,6 +670,55 @@ function benchEndgame(): void {
   dbClear()
 }
 
+/*
+ * Уголки: the other engine on its own fixtures, the opening and two
+ * positions along a random game. Each is loaded once, outside the timing,
+ * the way the checkers rows take their fixtures ready-made; then the three
+ * calls a node makes are timed on it, and the search is given a second.
+ */
+function benchCorners(): void {
+  const walk = cornersWalk(createRng(2), 40)
+  const fixtures: Record<string, Position> = {
+    opening: cornersOpening(),
+    midgame: walk[walk.length >> 1]!,
+    late: walk[walk.length - 1]!,
+  }
+  const out = new Int32Array(CORNERS_MAX_MOVES)
+  const results: Result[] = []
+  for (const [name, p] of Object.entries(fixtures)) {
+    loadCorners(p)
+    const side = p.toMove === 'white' ? CORNERS_WHITE : CORNERS_BLACK
+    results.push(
+      measure(`generate ${name}`, () => {
+        sink ^= generateCorners(side, out, 0)
+      }),
+      measure(`evaluate ${name}`, () => {
+        sink ^= evaluateCorners(side)
+      }),
+      measure(`status ${name}`, () => {
+        sink ^= cornersStatusOf(side, p.ply)
+      }),
+    )
+  }
+  report('уголки', 'call', results)
+
+  console.log('\n## уголки search: one second per fixture\n')
+  console.log('| fixture | depth | nodes | Mnode/s | TT hit rate |')
+  console.log('| --- | ---: | ---: | ---: | ---: |')
+  for (const [name, p] of Object.entries(fixtures)) {
+    cornersTtClear()
+    const start = performance.now()
+    const r = searchCorners(p, { depth: 64, budgetMs: 1000, margin: 0 })
+    const ms = performance.now() - start
+    const stats = cornersStats()
+    const rate = ((100 * stats.ttHits) / Math.max(1, stats.ttProbes)).toFixed(0)
+    console.log(
+      `| ${name} | ${r.depth} | ${r.nodes} | ${format(r.nodes / ms / 1000)} | ${rate}% |`,
+    )
+    sink ^= r.move
+  }
+}
+
 const GROUPS: ReadonlyArray<readonly [string, () => void]> = [
   ['generate', benchGenerate],
   ['makeMove', benchMakeMove],
@@ -660,6 +728,7 @@ const GROUPS: ReadonlyArray<readonly [string, () => void]> = [
   ['evaluate', benchEvaluate],
   ['search', benchSearch],
   ['endgame', benchEndgame],
+  ['corners', benchCorners],
 ]
 
 // `npm run bench -- evaluate` runs the groups whose name contains the word.

@@ -58,7 +58,7 @@ class FakeWorker implements WorkerLike {
 }
 
 function replyFor(req: ThinkRequest): ThinkResponse {
-  const move = legalMoves(fromBitPosition(initialBitPosition()))[0]!
+  const move = legalMoves(fromBitPosition(initialBitPosition()), 'checkers')[0]!
   return { id: req.id, move, score: 0, depth: 1, nodes: 1, ms: 0 }
 }
 
@@ -71,7 +71,10 @@ describe('DirectThinker', () => {
     const reply = await new DirectThinker({ depth: 2 }).think(request)
     expect(reply.id).toBe(1)
     expect(reply.depth).toBe(2)
-    const keys = legalMoves(fromBitPosition(initialBitPosition())).map(moveKey)
+    const keys = legalMoves(
+      fromBitPosition(initialBitPosition()),
+      'checkers',
+    ).map(moveKey)
     expect(keys).toContain(moveKey(reply.move))
   })
 
@@ -79,7 +82,7 @@ describe('DirectThinker', () => {
     const thinker = new DirectThinker({ depth: 2 })
     await expect(
       thinker.think({ ...request, position: 'W:W:Bd4' }),
-    ).rejects.toThrow(/no legal moves/)
+    ).rejects.toThrow(/decided position/)
   })
 })
 
@@ -106,9 +109,10 @@ describe('LazyThinker', () => {
       const thinker = defaultThinker()
       expect(thinker).toBeInstanceOf(LazyThinker)
       const reply = await thinker.think(request)
-      const keys = legalMoves(fromBitPosition(initialBitPosition())).map(
-        moveKey,
-      )
+      const keys = legalMoves(
+        fromBitPosition(initialBitPosition()),
+        'checkers',
+      ).map(moveKey)
       expect(keys).toContain(moveKey(reply.move))
     } finally {
       vi.unstubAllGlobals()

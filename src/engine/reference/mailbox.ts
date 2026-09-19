@@ -234,6 +234,7 @@ export function mailboxApply(position: Position, move: Move): Position {
     board,
     toMove: position.toMove === 'white' ? 'black' : 'white',
     drawCounter: quietKingMove ? position.drawCounter + 1 : 0,
+    ply: position.ply + 1,
   }
 }
 

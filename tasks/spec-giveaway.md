@@ -311,7 +311,7 @@ already correlates with it.
 The measurement harness — `baselineEval` and `weights` in `evalGiveaway.ts`,
 `baseline=` and `weights=` in `selfplay` — ships with the code, on the same
 footing as `dbLimit`: it is how these numbers were found and how the next person
-will find better ones. Every run is in `tasks/todo.md`.
+will find better ones. Every run is in `tasks/todo-giveaway.md`.
 
 Move ordering (`search.ts`) looked like it should invert too: preferring the
 capture that takes most pieces and promotes is the wrong guess at поддавки.

@@ -61,6 +61,7 @@ export function OpponentHeader({
     result ?? turnLine(toMove, humanColor, name),
     searching ? `${name} ${t.turn.thinking}` : null,
     banter?.kind === 'offer' ? t.banter[banter.offer].ask : null,
+    banter?.kind === 'deadline' ? t.banter.deadline(banter.moves) : null,
     banter?.kind === 'remark' ? t.banter.remark[banter.id] : null,
   ]
     .filter((part) => part !== null)
@@ -101,6 +102,11 @@ export function OpponentHeader({
             onAccept={onAccept}
             onDecline={onDecline}
           />
+        )}
+        {banter?.kind === 'deadline' && (
+          <span className="opponent__bubble" aria-hidden="true">
+            {t.banter.deadline(banter.moves)}
+          </span>
         )}
         {banter?.kind === 'remark' && (
           <span className="opponent__bubble" aria-hidden="true">

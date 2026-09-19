@@ -1,5 +1,7 @@
+import { parseCorners } from '../corners/position.ts'
 import { fromBitPosition } from '../engine/adapter.ts'
 import { parsePos } from '../engine/position.ts'
+import { gameVariants } from '../game/types.ts'
 import type { Color, GameVariant, Position } from '../game/types.ts'
 import { FRIEND_ID, opponents } from '../opponents/opponents.ts'
 import type { OpponentId } from '../opponents/opponents.ts'
@@ -27,7 +29,6 @@ export const defaultStart: Start = {
 }
 
 const COLORS: ReadonlyArray<Color | 'both'> = ['white', 'black', 'both']
-const VARIANTS: ReadonlyArray<GameVariant> = ['checkers', 'giveaway']
 
 /**
  * Start read from the query string, so a position can be tried by hand
@@ -37,11 +38,16 @@ const VARIANTS: ReadonlyArray<GameVariant> = ['checkers', 'giveaway']
  *     ?pos=W:Wc3:Bd4,d6&vs=fox&side=white
  *     ?pos=W:WKa1,Kb2,Kc3:BKf4&vs=raven&side=black&db=off
  *     ?game=giveaway&vs=owl&side=black
+ *     ?game=corners&pos=W:Wa1,b1:Bh8,g8
  *
- * `game` is `checkers` (the default) or `giveaway`, which is how поддавки
- * is opened straight from a link. `pos` is the position literal of
- * `parsePos` (side to move, white pieces, black pieces, `K` for a king).
- * `vs` is an opponent id and `side` is the
+ * `game` is `checkers` (the default), `giveaway` or `corners`, which is
+ * how поддавки and уголки are opened straight from a link. `pos` is the
+ * position literal of the game's engine: `parsePos` for checkers (side
+ * to move, white pieces, black pieces, `K` for a king), `parseCorners`
+ * for уголки. The two literals are not interchangeable, so a `pos` that
+ * names no game is a checkers one, and it opens the checkers game the
+ * player set up last - never уголки, whatever was played last. `vs` is an
+ * opponent id and `side` is the
  * colour the human plays, or `both` for two players on one device — which
  * is what a given position gets, so nobody replies before the position has
  * been looked at, and for the same reason a position is never put on a
@@ -57,10 +63,15 @@ export function startFromQuery(
   rng: () => number = Math.random,
 ): Start {
   const params = new URLSearchParams(search)
-  const position = positionOf(params.get('pos'))
+  const variant = variantOf(params.get('game'))
+  const literal = params.get('pos')
+  // The game a literal is read in, and then played: the one named, or the
+  // remembered one if that is a checkers game.
+  const literalGame =
+    variant ?? (prefs.variant === 'corners' ? 'checkers' : prefs.variant)
+  const position = positionOf(literal, literalGame)
   const side = colorOf(params.get('side'))
   const opponentId = opponentOf(params.get('vs'))
-  const variant = variantOf(params.get('game'))
   const endgameDb = params.get('db') !== 'off'
   if (
     position === null &&
@@ -76,7 +87,7 @@ export function startFromQuery(
     }
   }
   const wanted: GamePrefs = {
-    variant: variant ?? prefs.variant,
+    variant: position === null ? (variant ?? prefs.variant) : literalGame,
     opponentId:
       opponentId ?? (position === null ? prefs.opponentId : FRIEND_ID),
     color: side === 'both' || side === null ? prefs.color : side,
@@ -96,10 +107,16 @@ export function startFromQuery(
   }
 }
 
-function positionOf(literal: string | null): Position | null {
+/** The literal read by the rules of `variant`, since the two differ. */
+function positionOf(
+  literal: string | null,
+  variant: GameVariant,
+): Position | null {
   if (literal === null || literal === '') return null
   try {
-    return fromBitPosition(parsePos(literal))
+    return variant === 'corners'
+      ? parseCorners(literal)
+      : fromBitPosition(parsePos(literal))
   } catch (error) {
     console.error('ignoring ?pos', error)
     return null
@@ -107,7 +124,7 @@ function positionOf(literal: string | null): Position | null {
 }
 
 function variantOf(value: string | null): GameVariant | null {
-  return VARIANTS.find((v) => v === value) ?? null
+  return gameVariants.find((v) => v === value) ?? null
 }
 
 function colorOf(value: string | null): Color | 'both' | null {

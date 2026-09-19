@@ -31,7 +31,12 @@ export const DEFAULT_TT_BITS = 18
 
 const GENERATION_MASK = 0x3fffff
 
-let TABLE = new Int32Array(ENTRY_SLOTS << DEFAULT_TT_BITS)
+/**
+ * Allocated by the first search rather than on import: the worker loads
+ * both engines, and a session that only ever plays уголки should not
+ * carry 8 MB of this game's table.
+ */
+let TABLE = new Int32Array(0)
 let MASK = (1 << DEFAULT_TT_BITS) - 1
 let generation = 0
 
@@ -43,12 +48,14 @@ export function ttResize(bits: number): void {
 }
 
 export function ttClear(): void {
+  if (TABLE.length === 0) ttResize(DEFAULT_TT_BITS)
   TABLE.fill(0)
   generation = 0
 }
 
 /** Marks the start of a new search; older entries then yield to new ones. */
 export function ttNewGeneration(): void {
+  if (TABLE.length === 0) ttResize(DEFAULT_TT_BITS)
   generation = (generation + 1) & GENERATION_MASK
 }
 

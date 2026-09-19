@@ -37,8 +37,9 @@ let started = false
 
 /**
  * Brings in the manifest and the small slices, once. Held back until a
- * game of checkers is actually on, because поддавки never reads them and
- * the manifest with the four-piece slices is some 650 kB of nothing.
+ * game of checkers is actually on, because the other games never read
+ * them and the manifest with the four-piece slices is some 650 kB of
+ * nothing.
  */
 function startTables(): void {
   if (!wanted || started) return
@@ -54,17 +55,17 @@ scope.onmessage = (event) => {
     wanted = event.data.endgameDb
     // A session opening on checkers gets them while the worker is idle,
     // which is the whole point of the configuration message.
-    if (event.data.variant !== 'giveaway') startTables()
+    if (event.data.variant === 'checkers') startTables()
     return
   }
   const request = event.data
   try {
     scope.postMessage(think(request))
     // Only now: a fetch started before the search would have waited for
-    // it anyway, and the reply would have waited for the fetch. Never for
-    // поддавки, which never reads the tables, so a session that only ever
-    // plays it fetches nothing at all.
-    if (request.variant !== 'giveaway') {
+    // it anyway, and the reply would have waited for the fetch. Only for
+    // checkers, the one game that reads the tables, so a session that
+    // never plays it fetches nothing at all.
+    if (request.variant === 'checkers') {
       startTables()
       const p = parsePos(request.position)
       loader.fetchMissed(popcount(p.white | p.black))

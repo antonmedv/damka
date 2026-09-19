@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { parseCorners } from '../corners/position.ts'
 import { fromBitPosition } from '../engine/adapter.ts'
 import { parsePos } from '../engine/position.ts'
 import { pieceAt, squareFromName } from '../game/board.ts'
@@ -522,6 +523,98 @@ describe('gameReducer: поддавки', () => {
   })
 })
 
+/** A two-human game of уголки whose current position is the literal. */
+function raceAt(literal: string): GameState {
+  return {
+    ...initialState({
+      variant: 'corners',
+      opponentId: 'friend',
+      humanColor: 'both',
+    }),
+    history: createHistory(parseCorners(literal)),
+  }
+}
+
+describe('gameReducer: уголки', () => {
+  it('opens with nine men a side and the corner man stuck', () => {
+    const s = initialState({
+      variant: 'corners',
+      opponentId: 'friend',
+      humanColor: 'both',
+    })
+    expect(currentPosition(s).board.filter(Boolean)).toHaveLength(18)
+    expect(movable(s)).toHaveLength(8)
+    expect(movable(s)).not.toContain(sq('a1'))
+  })
+
+  it('offers every landing square of a chain and the step beside it', () => {
+    const s = tapAll(raceAt('W:Wa1:Ba2,a4,b5'), 'a1')
+    expect(targets(s).sort()).toEqual(
+      [sq('b1'), sq('a3'), sq('a5'), sq('c5')].sort(),
+    )
+  })
+
+  it('stops a chain where the player taps, even with further to go', () => {
+    // Three moves pass through a3; a tap on a3 means a3, not "carry on".
+    const s = tapAll(raceAt('W:Wa1:Ba2,a4,b5'), 'a1', 'a3')
+    expect(s.steps).toEqual([])
+    expect(s.selected).toBeNull()
+    expect(currentPosition(s).toMove).toBe('black')
+    expect(formatMove(lastMove(s)!)).toBe('a1-a3')
+    expect(s.slide).toEqual({ from: sq('a1'), path: [sq('a3')] })
+  })
+
+  it('plays the whole chain from one tap on its end', () => {
+    const s = tapAll(raceAt('W:Wa1:Ba2,a4,b5'), 'a1', 'c5')
+    expect(formatMove(lastMove(s)!)).toBe('a1-a3-a5-c5')
+    expect(s.slide).toEqual({
+      from: sq('a1'),
+      path: [sq('a3'), sq('a5'), sq('c5')],
+    })
+  })
+
+  it('never leaves a man in the air: every landing square is a move', () => {
+    // A drag that ends on a middle landing square plays the move to it.
+    const s = gameReducer(raceAt('W:Wa1:Ba2,a4,b5'), {
+      type: 'move',
+      from: sq('a1'),
+      to: sq('a5'),
+    })
+    expect(formatMove(lastMove(s)!)).toBe('a1-a3-a5')
+    expect(s.slide).toBeNull()
+  })
+
+  it('keeps a man that crossed the far rank a man', () => {
+    const s = tapAll(raceAt('W:Wa6:Ba7,b8'), 'a6', 'c8')
+    expect(formatMove(lastMove(s)!)).toBe('a6-a8-c8')
+    expect(pieceAt(currentPosition(s).board, sq('c8'))).toEqual({
+      color: 'white',
+      kind: 'man',
+    })
+  })
+
+  it('plays a race out to a win once Black has answered', () => {
+    let s = raceAt('W:Wf6,g6,h6,f7,g7,h7,g8,h8,e8:Bd4,d5,d6,e4,e5,e6,a1,b1,c1')
+    s = play(s, ['e8', 'f8'])
+    expect(statusOf(s)).toBe('ongoing')
+    s = play(s, ['d4', 'd3'])
+    expect(statusOf(s)).toBe('whiteWins')
+    expect(movable(s)).toEqual([])
+  })
+
+  it('draws when Black finishes with its answer', () => {
+    let s = raceAt('W:Wf6,g6,h6,f7,g7,h7,g8,h8,e8:Ba1,b1,c1,a2,b2,c2,a3,b3,d3')
+    s = play(s, ['e8', 'f8'], ['d3', 'c3'])
+    expect(statusOf(s)).toBe('draw')
+  })
+
+  it('loses the side with a man at home once forty moves are played', () => {
+    const s = play(raceAt('B:Wa1,d4:Bd5:79'), ['d5', 'd6'])
+    expect(currentPosition(s).ply).toBe(80)
+    expect(statusOf(s)).toBe('blackWins')
+  })
+})
+
 describe('gameReducer: game over', () => {
   it('reports the result and ignores input', () => {
     const lost = stateAt('W:Wa1:Bb2,c3')
@@ -563,7 +656,8 @@ describe('gameReducer: computer opponent', () => {
       opponentId: 'friend',
       humanColor: 'both',
     })
-  const reply = (state: GameState) => legalMoves(currentPosition(state))[0]!
+  const reply = (state: GameState) =>
+    legalMoves(currentPosition(state), 'checkers')[0]!
   const thinkingAfterMove = (): GameState =>
     gameReducer(play(vsHare('white'), ['c3', 'd4']), { type: 'think', id: 1 })
 
@@ -1169,7 +1263,7 @@ describe('gameReducer: offers', () => {
       ),
       { type: 'think', id: 1 },
     )
-    const move = legalMoves(currentPosition(thinking))[0]!
+    const move = legalMoves(currentPosition(thinking), 'checkers')[0]!
     const answered = gameReducer(thinking, {
       type: 'computerMove',
       id: 1,
@@ -1199,7 +1293,7 @@ describe('gameReducer: offers', () => {
     const answered = gameReducer(thinking, {
       type: 'computerMove',
       id: 1,
-      move: legalMoves(currentPosition(thinking))[0]!,
+      move: legalMoves(currentPosition(thinking), 'checkers')[0]!,
       score: MATE_BOUND,
     })
     const resigned = gameReducer(answered, { type: 'accept', offer: 'resign' })

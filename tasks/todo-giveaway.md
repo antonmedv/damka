@@ -5,7 +5,7 @@
 - [x] Task: Spec, plan, task list, and the Поддавки section in `RULES.md`
   - Acceptance: `RULES.md` states the inverted winning condition and that every other rule is shared
   - Verify: read it against `tasks/spec-giveaway.md`
-  - Files: `tasks/spec-giveaway.md`, `tasks/plan.md`, `tasks/todo.md`, `RULES.md`
+  - Files: `tasks/spec-giveaway.md`, `tasks/plan-giveaway.md`, `tasks/todo-giveaway.md`, `RULES.md`
 
 ## Stage 2 — Engine rules
 

@@ -53,7 +53,7 @@ describe('square geometry', () => {
 })
 
 describe('initialPosition', () => {
-  const { board, toMove } = initialPosition()
+  const { board, toMove } = initialPosition('checkers')
 
   it('gives white the first move', () => {
     expect(toMove).toBe('white')

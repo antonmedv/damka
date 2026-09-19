@@ -1,7 +1,10 @@
 import { useRef } from 'react'
-import { opposite } from '../game/board.ts'
+import { menAtHome } from '../corners/board.ts'
+import { endingOf } from '../corners/status.ts'
+import { opposite, squareName } from '../game/board.ts'
+import { legalMoves } from '../game/moves.ts'
 import { formatDuration } from '../game/timeControl.ts'
-import type { Color, GameStatus } from '../game/types.ts'
+import type { Color, GameStatus, GameVariant } from '../game/types.ts'
 import { t } from '../i18n/index.ts'
 import { Avatar } from '../opponents/avatars/Avatar.tsx'
 import { opponentById } from '../opponents/opponents.ts'
@@ -101,6 +104,7 @@ function Result({
 
       <Table
         stats={stats}
+        variant={state.setup.variant}
         human={human}
         opponentName={t.opponents[opponent.id].name}
       />
@@ -151,6 +155,7 @@ function reasonOf(
       ? t.gameOver.reason.agreed
       : t.gameOver.reason.resigned
   }
+  if (state.setup.variant === 'corners') return cornersReason(state, status)
   if (status === 'draw') return t.gameOver.reason.drawRule
   const winner = winnerOf(status)
   if (winner === null) return ''
@@ -163,14 +168,47 @@ function reasonOf(
     : t.gameOver.reason.noMoves
 }
 
+/**
+ * How a race ended: a side filled the target, or both did with the same
+ * move; men were left at home past the deadline, and the loser's are named
+ * so the player sees which; the count decided at the limit; or the side to
+ * move had nowhere to go.
+ */
+function cornersReason(state: GameState, status: GameStatus): string {
+  const position = finalPosition(state)
+  const ending = endingOf(position, legalMoves(position, 'corners').length)
+  const drawn = status === 'draw'
+  const winner = winnerOf(status)
+  const words = t.gameOver.reason.corners
+  switch (ending) {
+    case 'finish':
+      return drawn ? words.finishBoth : words.finish
+    case 'blocked':
+      if (winner === null) return words.blockedBoth
+      return words.blocked(
+        menAtHome(position, opposite(winner)).map(squareName),
+      )
+    case 'limit':
+      return drawn ? words.limitEven : words.limit
+    case 'noMoves':
+      return t.gameOver.reason.noMoves
+    default:
+      return ''
+  }
+}
+
 type TableProps = {
   stats: GameStats
+  variant: GameVariant
   human: Color | 'both'
   opponentName: string
 }
 
-/** The two sides side by side; the player's own column comes first. */
-function Table({ stats, human, opponentName }: TableProps) {
+/**
+ * The two sides side by side; the player's own column comes first. The
+ * rows are the game's: captures and crowns at checkers, jumps at уголки.
+ */
+function Table({ stats, variant, human, opponentName }: TableProps) {
   const sides: ReadonlyArray<Color> =
     human === 'both' ? ['white', 'black'] : [human, opposite(human)]
   const heads =
@@ -183,16 +221,28 @@ function Table({ stats, human, opponentName }: TableProps) {
       label: t.gameOver.stats.moves,
       values: columns.map((s) => String(s.moves)),
     },
-    {
-      label: t.gameOver.stats.taken,
-      values: columns.map((s) => String(s.taken)),
-    },
-    {
-      label: t.gameOver.stats.crowned,
-      values: columns.map((s) => String(s.crowned)),
-    },
-    { label: t.gameOver.stats.biggest, values: columns.map(bestOf) },
   ]
+  if (variant === 'corners') {
+    rows.push(
+      {
+        label: t.gameOver.stats.leaps,
+        values: columns.map((s) => String(s.leaps)),
+      },
+      { label: t.gameOver.stats.longestLeap, values: columns.map(leapOf) },
+    )
+  } else {
+    rows.push(
+      {
+        label: t.gameOver.stats.taken,
+        values: columns.map((s) => String(s.taken)),
+      },
+      {
+        label: t.gameOver.stats.crowned,
+        values: columns.map((s) => String(s.crowned)),
+      },
+      { label: t.gameOver.stats.biggest, values: columns.map(bestOf) },
+    )
+  }
   if (stats.timed) {
     rows.push(
       {
@@ -243,4 +293,10 @@ function bestOf(side: SideStats): string {
   return side.best === 0
     ? t.gameOver.stats.none
     : t.gameOver.stats.inOneMove(side.best)
+}
+
+function leapOf(side: SideStats): string {
+  return side.longestLeap === 0
+    ? t.gameOver.stats.none
+    : t.gameOver.stats.jumpsInOneMove(side.longestLeap)
 }

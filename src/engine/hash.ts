@@ -5,14 +5,16 @@
  * and `meta = side | plies << 1`), so there is no incremental Zobrist key:
  * the words go through the murmur3 body and finaliser with `Math.imul`.
  * The table verifies a hit against the stored words, so the hash only has
- * to spread positions over the entries, never to identify them.
+ * to spread positions over the entries, never to identify them. The
+ * уголки table hashes its five words with the same two steps.
  */
 const C1 = 0xcc9e2d51 | 0
 const C2 = 0x1b873593 | 0
 const C3 = 0xe6546b64 | 0
-const SEED = 0x9747b28c | 0
+export const HASH_SEED = 0x9747b28c | 0
 
-function mixWord(h: number, k: number): number {
+/** Folds one word into the running hash; `finishHash` ends the run. */
+export function mixWord(h: number, k: number): number {
   k = Math.imul(k, C1)
   k = (k << 15) | (k >>> 17)
   k = Math.imul(k, C2)
@@ -27,11 +29,16 @@ export function hashPosition(
   kings: number,
   meta: number,
 ): number {
-  let h = mixWord(SEED, white)
+  let h = mixWord(HASH_SEED, white)
   h = mixWord(h, black)
   h = mixWord(h, kings)
   h = mixWord(h, meta)
-  h ^= 16
+  return finishHash(h, 4)
+}
+
+/** The murmur3 finaliser over a run of `words` words. */
+export function finishHash(h: number, words: number): number {
+  h ^= words << 2
   h ^= h >>> 16
   h = Math.imul(h, 0x85ebca6b)
   h ^= h >>> 13

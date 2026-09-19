@@ -1,12 +1,14 @@
 import { squareName } from './board.ts'
 import type { Move } from './types.ts'
 
-/** "c3-d4" for a quiet move, "c3:e5:g7" for a capture along its path. */
+/**
+ * "c3-d4" for a quiet move, "c3:e5:g7" for a capture along its path, and
+ * "a1-a3-c3" for an уголки jump chain: every landing square, joined the
+ * way a quiet move is, since nothing is taken.
+ */
 export function formatMove(move: Move): string {
-  if (move.captures.length === 0) {
-    return `${squareName(move.from)}-${squareName(move.to)}`
-  }
-  return [move.from, ...move.path].map(squareName).join(':')
+  const separator = move.captures.length === 0 ? '-' : ':'
+  return [move.from, ...move.path].map(squareName).join(separator)
 }
 
 export type MovePair = {

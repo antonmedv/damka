@@ -43,6 +43,17 @@ describe('preferences', () => {
     expect(setupFrom(loadPrefs()).variant).toBe('giveaway')
   })
 
+  it('remembers уголки too', () => {
+    savePrefs({
+      variant: 'corners',
+      opponentId: 'hare',
+      color: 'black',
+      timeControlId: 'none',
+    })
+    expect(loadPrefs().variant).toBe('corners')
+    expect(setupFrom(loadPrefs()).variant).toBe('corners')
+  })
+
   it('falls back to checkers for a game it does not know', () => {
     localStorage.setItem(
       'damka.newGame',

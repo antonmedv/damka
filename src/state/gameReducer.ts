@@ -155,7 +155,7 @@ export const defaultSetup: GameSetup = {
 /** `position` starts the game somewhere other than the normal opening. */
 export function initialState(
   setup: GameSetup = defaultSetup,
-  position: Position = initialPosition(),
+  position: Position = initialPosition(setup.variant),
   /** Omitted where there is no clock to read; a timed game starts frozen. */
   now?: number,
 ): GameState {
@@ -455,7 +455,9 @@ export function displayPosition(state: GameState): Position {
 
 /**
  * A man that landed on the back rank during the capture became a king at
- * that moment and goes on as one, so it is shown as a king.
+ * that moment and goes on as one, so it is shown as a king. Only checkers
+ * gets here with steps: an уголки chain is played the moment its end is
+ * tapped, so nothing of it is ever shown half-way.
  */
 function shownPiece(piece: Piece, steps: ReadonlyArray<Square>): Piece {
   if (piece.kind === 'king') return piece
@@ -468,9 +470,11 @@ function shownPiece(piece: Piece, steps: ReadonlyArray<Square>): Piece {
 /** Legal moves of the selected piece that agree with the steps so far. */
 export function candidates(state: GameState): Move[] {
   if (state.selected === null) return []
-  return movesFrom(currentPosition(state), state.selected).filter((move) =>
-    state.steps.every((square, i) => move.path[i] === square),
-  )
+  return movesFrom(
+    currentPosition(state),
+    state.selected,
+    state.setup.variant,
+  ).filter((move) => state.steps.every((square, i) => move.path[i] === square))
 }
 
 /**
@@ -496,8 +500,8 @@ export function targets(state: GameState): Square[] {
 export function movable(state: GameState): Square[] {
   if (inputBlocked(state)) return []
   const shown = selectedSquare(state)
-  return movablePieces(currentPosition(state)).map((square) =>
-    square === state.selected && shown !== null ? shown : square,
+  return movablePieces(currentPosition(state), state.setup.variant).map(
+    (square) => (square === state.selected && shown !== null ? shown : square),
   )
 }
 
@@ -634,7 +638,7 @@ function computerMove(
 ): GameState {
   if (state.thinking !== action.id) return state
   const key = moveKey(action.move)
-  const played = legalMoves(currentPosition(state)).find(
+  const played = legalMoves(currentPosition(state), state.setup.variant).find(
     (candidate) => moveKey(candidate) === key,
   )
   const idle = { ...state, thinking: null }
@@ -689,7 +693,7 @@ function clearSelection(state: GameState): GameState {
 function select(state: GameState, square: Square): GameState {
   if (inputBlocked(state)) return state
   if (square === selectedSquare(state)) return state
-  if (!movablePieces(currentPosition(state)).includes(square)) return state
+  if (!canPickUp(state, square)) return state
   return { ...state, selected: square, steps: [] }
 }
 
@@ -700,8 +704,15 @@ function tap(state: GameState, square: Square, now: number | null): GameState {
   }
   // Any other tap abandons a capture in progress and counts as a fresh tap.
   if (state.selected === square) return { ...state, selected: null, steps: [] }
-  const own = movablePieces(currentPosition(state)).includes(square)
+  const own = canPickUp(state, square)
   return { ...state, selected: own ? square : null, steps: [] }
+}
+
+/** Whether a piece stands on `square` and has a move to make. */
+function canPickUp(state: GameState, square: Square): boolean {
+  return movablePieces(currentPosition(state), state.setup.variant).includes(
+    square,
+  )
 }
 
 function move(
@@ -714,7 +725,7 @@ function move(
   if (inputBlocked(state)) return state
   let s = state
   if (from !== selectedSquare(state)) {
-    if (!movablePieces(currentPosition(state)).includes(from)) return state
+    if (!canPickUp(state, from)) return state
     s = { ...state, selected: from, steps: [] }
   }
   if (!targets(s).includes(to)) return state
@@ -727,6 +738,14 @@ function move(
  * in the air, but only as far as the first square they disagree on, so a
  * jump the player cannot get wrong never waits to be entered. A final
  * square that identifies a single candidate plays that candidate.
+ *
+ * With one exception, made for уголки, where a chain may stop on any
+ * landing square: when one of the candidates lands on `square` next and
+ * stops there while others go on through it, the tap means that move. At
+ * a3 → c3 → c1, a player who taps c3 means c3; c1 is a tap on c1.
+ * Checkers never has the choice - a capture that can go on must, and two
+ * candidates on the same squares with the same pieces taken go on the
+ * same way - so nothing changes there.
  */
 function step(
   state: GameState,
@@ -739,8 +758,9 @@ function step(
   // Every one of these lands on `square` next, so it is the first of the
   // landing squares still to come and the one a drag has reached.
   const next = moves.filter((move) => move.path[k] === square)
-  if (next.length === 1) {
-    const only = next[0]!
+  const stopsHere = next.filter((move) => move.path.length === k + 1)
+  if (next.length === 1 || stopsHere.length === 1) {
+    const only = stopsHere[0] ?? next[0]!
     return commit(state, only, flight(state, only.path.slice(k), tapped), now)
   }
   if (next.length > 1) {
@@ -750,7 +770,7 @@ function step(
   }
   const finals = moves.filter((move) => move.to === square)
   if (finals.length !== 1) return state
-  // The whole capture from one tap on its last square. A drag that lands
+  // The whole move from one tap on its last square. A drag that lands
   // there has carried the piece the whole way, so nothing is left to fly.
   const played = finals[0]!
   const rest = played.path.slice(k)

@@ -2,6 +2,7 @@ import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { StrictMode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
+import { parseCorners } from '../corners/position.ts'
 import { fromBitPosition } from '../engine/adapter.ts'
 import { parsePos } from '../engine/position.ts'
 import { displayCell, squareFromName } from '../game/board.ts'
@@ -1078,5 +1079,131 @@ describe('GameScreen: поддавки', () => {
       within(dialog).getByRole('heading', { name: 'Победа белых' }),
     ).toBeInTheDocument()
     expect(within(dialog).getByText('Шашек не осталось')).toBeInTheDocument()
+  })
+})
+
+describe('GameScreen: уголки', () => {
+  it('sets men on light squares and tells the persona which game it is', async () => {
+    const user = userEvent.setup()
+    const thinker = new ManualThinker()
+    render(
+      <Page
+        initialSetup={{
+          variant: 'corners',
+          opponentId: 'fox',
+          humanColor: 'white',
+        }}
+        thinker={thinker}
+      />,
+    )
+
+    // Men stand on light squares here, which checkers never allows.
+    expect(square('b1')).toHaveAccessibleName('b1, белая шашка')
+
+    await user.click(square('c3'))
+    await user.click(square('d3'))
+    await waitFor(() => expect(thinker.requests).toHaveLength(1))
+
+    const request = thinker.requests[0]!.request
+    expect(request.variant).toBe('corners')
+    expect(request.position).toBe(
+      'B:Wa1,b1,c1,a2,b2,c2,a3,b3,d3:Bf6,g6,h6,f7,g7,h7,f8,g8,h8:1',
+    )
+  })
+
+  it('plays a race out to a win against a persona', async () => {
+    const user = userEvent.setup()
+    render(
+      <Page
+        initialSetup={{
+          variant: 'corners',
+          opponentId: 'fox',
+          humanColor: 'white',
+        }}
+        initialPosition={parseCorners(
+          'W:Wf6,g6,h6,f7,g7,h7,g8,h8,e8:Bd4,d5,d6,e4,e5,e6,a1,b1,c1',
+        )}
+        thinker={fast}
+      />,
+    )
+
+    // e8-f8 fills the target; Black's answer cannot fill its own.
+    await user.click(square('e8'))
+    await user.click(square('f8'))
+
+    const dialog = await screen.findByRole('dialog')
+    expect(
+      within(dialog).getByRole('heading', { name: 'Победа белых' }),
+    ).toBeInTheDocument()
+    expect(
+      within(dialog).getByText('Все шашки в доме соперника'),
+    ).toBeInTheDocument()
+  })
+
+  it('shows a jump chain in the move list with every landing square', async () => {
+    const user = userEvent.setup()
+    render(
+      <Page
+        initialSetup={{
+          variant: 'corners',
+          opponentId: 'friend',
+          humanColor: 'both',
+        }}
+        initialPosition={parseCorners('W:Wa1:Ba2,a4,b5')}
+        thinker={fast}
+      />,
+    )
+
+    await user.click(square('a1'))
+    await user.click(square('c5'))
+
+    expect(
+      movesPlayed().getByRole('button', { name: 'a1-a3-a5-c5' }),
+    ).toBeInTheDocument()
+  })
+
+  it('counts the home deadline down and rings the men still at home', () => {
+    render(
+      <Page
+        initialSetup={{
+          variant: 'corners',
+          opponentId: 'fox',
+          humanColor: 'white',
+        }}
+        initialPosition={parseCorners('W:Wa1,b2,d4:Bd5:70')}
+        thinker={fast}
+      />,
+    )
+    expect(bubble()).toHaveTextContent(
+      'Выведите шашки из дома: осталось 5 ходов',
+    )
+    expect(square('a1')).toHaveClass('board__square--overdue')
+    expect(square('b2')).toHaveClass('board__square--overdue')
+    expect(square('d4')).not.toHaveClass('board__square--overdue')
+  })
+
+  it('names and rings the man the blocking rule caught', async () => {
+    const user = userEvent.setup()
+    render(
+      <Page
+        initialSetup={{
+          variant: 'corners',
+          opponentId: 'friend',
+          humanColor: 'both',
+        }}
+        initialPosition={parseCorners('B:Wa1,d4:Bd5,c7:79')}
+        thinker={fast}
+      />,
+    )
+
+    await user.click(square('d5'))
+    await user.click(square('d3'))
+
+    const dialog = await screen.findByRole('dialog')
+    expect(
+      within(dialog).getByText('Шашка a1 осталась дома после сорокового хода'),
+    ).toBeInTheDocument()
+    expect(square('a1')).toHaveClass('board__square--overdue')
+    expect(square('d4')).not.toHaveClass('board__square--overdue')
   })
 })

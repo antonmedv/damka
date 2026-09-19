@@ -52,23 +52,9 @@
   font-weight: 600;
 }
 
-.navbar__tab:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
 .navbar__tab:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
-}
-
-.navbar__soon {
-  padding: 0.05rem 0.4rem;
-  border-radius: 999px;
-  background: rgb(255 255 255 / 0.12);
-  font-size: 0.65rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
 }
 
 @media (max-width: 480px) {

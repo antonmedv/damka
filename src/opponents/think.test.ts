@@ -1,11 +1,14 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
+import { initialPosition as cornersOpening } from '../corners/board.ts'
+import { formatCorners, parseCorners } from '../corners/position.ts'
+import { ttClear as cornersTtClear } from '../corners/tt.ts'
 import { fromBitPosition } from '../engine/adapter.ts'
 import { DB_WIN, dbAddSlice, dbClear, dbPieces } from '../engine/db.ts'
 import { moveKey } from '../engine/move.ts'
 import { formatPos, initialBitPosition, parsePos } from '../engine/position.ts'
 import { createRng } from '../engine/random.ts'
-import { MATE_BOUND } from '../engine/score.ts'
+import { MATE, MATE_BOUND } from '../engine/score.ts'
 import { ROOT_SLOTS, search } from '../engine/search.ts'
 import { CHECKERS } from '../engine/variant.ts'
 import { EXACT, ttClear } from '../engine/tt.ts'
@@ -45,7 +48,9 @@ describe('think', () => {
     expect(r.depth).toBe(personas.hare.depth)
     expect(r.nodes).toBeGreaterThan(0)
     expect(r.ms).toBeGreaterThanOrEqual(0)
-    const keys = legalMoves(fromBitPosition(parsePos(start))).map(moveKey)
+    const keys = legalMoves(fromBitPosition(parsePos(start)), 'checkers').map(
+      moveKey,
+    )
     expect(keys).toContain(moveKey(r.move))
   })
 
@@ -170,7 +175,7 @@ describe('think', () => {
     )
     expect(r.move.promotes).toBe(true)
     expect(r.move.captures.length).toBe(3)
-    const keys = legalMoves(fromBitPosition(p)).map(moveKey)
+    const keys = legalMoves(fromBitPosition(p), 'checkers').map(moveKey)
     expect(keys).toContain(moveKey(r.move))
   })
 
@@ -186,7 +191,7 @@ describe('think', () => {
         },
         strict,
       ),
-    ).toThrow(/no legal moves/)
+    ).toThrow(/decided position/)
   })
 
   it('refuses a position drawn by the 30-ply rule', () => {
@@ -280,7 +285,10 @@ describe('think: поддавки', () => {
   const quick = { depth: 4, budgetMs: 0, minThinkMs: 0 }
 
   it('answers with a legal move for every persona', () => {
-    const legal = legalMoves(fromBitPosition(initialBitPosition())).map(moveKey)
+    const legal = legalMoves(
+      fromBitPosition(initialBitPosition()),
+      'checkers',
+    ).map(moveKey)
     for (const id of personaIds) {
       const r = thinkWith(
         { id: 1, variant: 'giveaway', position: start, persona: id, seed: 3 },
@@ -337,5 +345,96 @@ describe('think: поддавки', () => {
       { ...personas.raven, ...quick, depth: 6 },
     )
     expect(lost.score).toBeLessThan(-MATE_BOUND)
+  })
+})
+
+describe('think: уголки', () => {
+  beforeEach(() => {
+    cornersTtClear()
+  })
+
+  it('answers with a legal уголки move and the persona depth', () => {
+    const start = cornersOpening()
+    const r = think({
+      id: 3,
+      variant: 'corners',
+      position: formatCorners(start),
+      persona: 'hare',
+      seed: 1,
+    })
+    expect(r.id).toBe(3)
+    expect(r.depth).toBe(personas.hare.depth)
+    const keys = legalMoves(start, 'corners').map(moveKey)
+    expect(keys).toContain(moveKey(r.move))
+  })
+
+  it('returns a chain as the UI move, path and all', () => {
+    // Two black men to jump over on the way up the a-file; the third keeps
+    // Black from being about to finish, so nothing needs blocking.
+    const r = thinkWith(
+      {
+        id: 1,
+        variant: 'corners',
+        position: 'W:Wa1:Ba2,a4,h8',
+        persona: 'owl',
+        seed: 1,
+      },
+      strict,
+    )
+    expect(formatMove(r.move)).toBe('a1-a3-a5')
+    expect(r.move.captures).toEqual([])
+  })
+
+  it('refuses a finished race', () => {
+    expect(() =>
+      thinkWith(
+        {
+          id: 1,
+          variant: 'corners',
+          position: 'W:Wf6,g6,h6,f7,g7,h7,f8,g8,h8:Ba1,b1,c1,a2,b2,c2,a3,b3,c3',
+          persona: 'owl',
+          seed: 1,
+        },
+        strict,
+      ),
+    ).toThrow(/drawn position/)
+  })
+
+  it('reads the ply count off the literal', () => {
+    // At ply 78 the man at home must leave before the deadline two plies on.
+    const r = thinkWith(
+      {
+        id: 1,
+        variant: 'corners',
+        position: 'W:Wc3,e5:Bd5,d6:78',
+        persona: 'owl',
+        seed: 1,
+      },
+      strict,
+    )
+    expect(r.move.from).toBe(parseCorners('W:Wc3:B').board.findIndex(Boolean))
+  })
+})
+
+describe('pickRoot: a win found', () => {
+  it('is played the shortest way whatever the margin', () => {
+    // Two exact wins, in three moves and in four: the kitten would take
+    // either at its margin, and might keep taking the longer one.
+    const root = Int32Array.from([1, 0, MATE - 6, EXACT, 2, 0, MATE - 8, EXACT])
+    expect(pickRoot(root, 400, 250, () => 0.99)).toBe(0)
+  })
+
+  it('holds the longest defence in a lost position', () => {
+    const root = Int32Array.from([
+      1,
+      0,
+      -(MATE - 8),
+      EXACT,
+      2,
+      0,
+      -(MATE - 6),
+      EXACT,
+    ])
+    expect(pickRoot(root, 400, 250, () => 0.99)).toBe(0)
   })
 })

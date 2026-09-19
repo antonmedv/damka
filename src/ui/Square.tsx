@@ -24,6 +24,8 @@ type SquareProps = {
   lastTo?: boolean
   /** Intermediate landing square of the last move. */
   lastPath?: boolean
+  /** Holds a man late to leave home at уголки. */
+  overdue?: boolean
   /** The piece is flying in along the last move's path. */
   arriving?: boolean
   tabIndex?: number
@@ -46,6 +48,7 @@ export const Square = memo(function Square({
   lastFrom = false,
   lastTo = false,
   lastPath = false,
+  overdue = false,
   arriving = false,
   tabIndex,
   onFocus,
@@ -61,12 +64,19 @@ export const Square = memo(function Square({
     lastFrom && 'board__square--last-from',
     lastTo && 'board__square--last-to',
     lastPath && 'board__square--last-path',
+    overdue && 'board__square--overdue',
   ]
     .filter(Boolean)
     .join(' ')
 
   const content = piece ? t.piece[piece.color][piece.kind] : t.emptySquare
-  const hint = target ? t.targetHint : selected ? t.selectedHint : null
+  const hint = target
+    ? t.targetHint
+    : selected
+      ? t.selectedHint
+      : overdue
+        ? t.overdueHint
+        : null
   const label = t.squareLabel(
     squareName(square),
     hint === null ? content : `${content}, ${hint}`,

@@ -6,7 +6,7 @@
  * points, checked by `npm run selfplay`.
  *
  * One table serves both games. The ladder was measured again at поддавки
- * rather than assumed to carry over; see `tasks/todo.md`.
+ * rather than assumed to carry over; see `tasks/todo-giveaway.md`.
  */
 import type { OpponentId } from './opponents.ts'
 

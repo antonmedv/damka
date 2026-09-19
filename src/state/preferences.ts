@@ -1,5 +1,6 @@
 import { timeControlById } from '../game/timeControl.ts'
 import type { TimeControlId } from '../game/timeControl.ts'
+import { gameVariants } from '../game/types.ts'
 import type { Color, GameVariant } from '../game/types.ts'
 import { opponentById, opponents } from '../opponents/opponents.ts'
 import type { OpponentId } from '../opponents/opponents.ts'
@@ -92,14 +93,13 @@ export function resolveColor(choice: ColorChoice, rng: () => number): Color {
 }
 
 const CHOICES: ReadonlyArray<ColorChoice> = ['white', 'black', 'random']
-const VARIANTS: ReadonlyArray<GameVariant> = ['checkers', 'giveaway']
 
 function sanitize(value: unknown): GamePrefs {
   if (typeof value !== 'object' || value === null) return defaultPrefs
   const stored = value as Record<string, unknown>
   return {
     variant:
-      VARIANTS.find((v) => v === stored['variant']) ?? defaultPrefs.variant,
+      gameVariants.find((v) => v === stored['variant']) ?? defaultPrefs.variant,
     opponentId: opponentId(stored['opponentId']),
     color: CHOICES.find((c) => c === stored['color']) ?? defaultPrefs.color,
     timeControlId: timeControlId(stored['timeControlId']),

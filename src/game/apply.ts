@@ -5,7 +5,9 @@ import type { Move, Piece, Position } from './types.ts'
  * Returns the position after `move`; never mutates `position`. Captured
  * pieces leave the board only now, at the end of the whole sequence. The
  * draw counter counts quiet king moves and resets on any capture or man
- * move (a promotion is a man move).
+ * move (a promotion is a man move). One function serves every game: an
+ * уголки move captures nothing and promotes nobody, so only the man and
+ * the ply count move.
  */
 export function applyMove(position: Position, move: Move): Position {
   const piece = pieceAt(position.board, move.from)
@@ -21,5 +23,6 @@ export function applyMove(position: Position, move: Move): Position {
     board,
     toMove: opposite(position.toMove),
     drawCounter: quietKingMove ? position.drawCounter + 1 : 0,
+    ply: position.ply + 1,
   }
 }

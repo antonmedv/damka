@@ -1,4 +1,4 @@
-import type { Color, PieceKind } from '../game/types.ts'
+import type { Color, GameVariant, PieceKind } from '../game/types.ts'
 import type { OpponentId } from '../opponents/opponents.ts'
 
 /**
@@ -13,6 +13,14 @@ function plural(n: number, one: string, few: string, many: string): string {
   return mod10 >= 2 && mod10 <= 4 ? few : many
 }
 
+/** "a1", "a1 и b3", "a1, a2 и b3". */
+const listOf = new Intl.ListFormat('ru', { type: 'conjunction' })
+
+/** "на 21 клетку", "на 23 клетки", "на 25 клеток": a count after «на». */
+function bySquares(squares: number): string {
+  return `${squares} ${plural(squares, 'клетку', 'клетки', 'клеток')}`
+}
+
 export const ru = {
   brand: 'Damka',
   /** Author credit in the page footer. */
@@ -22,8 +30,7 @@ export const ru = {
     checkers: 'Шашки',
     giveaway: 'Поддавки',
     corners: 'Уголки',
-    soon: 'скоро',
-  },
+  } satisfies Record<GameVariant | 'games', string>,
   piece: {
     white: { man: 'белая шашка', king: 'белая дамка' },
     black: { man: 'чёрная шашка', king: 'чёрная дамка' },
@@ -33,6 +40,8 @@ export const ru = {
   targetHint: 'ход возможен',
   /** Appended to the label of the selected piece's square. */
   selectedHint: 'выбрана',
+  /** Уголки: the man is still in its own home as the deadline nears. */
+  overdueHint: 'не вышла из дома',
   /** "c3, белая шашка" */
   squareLabel: (name: string, content: string) => `${name}, ${content}`,
   moveList: {
@@ -123,10 +132,19 @@ export const ru = {
     /** Turns the offer down; it is not made again this game. */
     decline: 'Играем дальше',
     /**
+     * Уголки: the player still has men at home and this many moves to get
+     * them out before the rule reads them as a loss (RULES.md, "Blocking").
+     */
+    deadline: (moves: number) =>
+      moves === 1
+        ? 'Выведите шашки из дома: это последний ход'
+        : `Выведите шашки из дома: осталось ${moves} ${plural(moves, 'ход', 'хода', 'ходов')}`,
+    /**
      * Short remarks on the move just played. The поддавки four answer the
      * checkers four: the same events, and the opposite thing to say about
      * them, because there a haul of pieces is a punishment and a дамка is
-     * a piece nobody can get rid of.
+     * a piece nobody can get rid of. At уголки the only event is a long
+     * chain of jumps, its own and the player's.
      */
     remark: {
       feast: 'Вкусно!',
@@ -137,6 +155,8 @@ export const ru = {
       fed: 'Приятного аппетита!',
       burdened: 'Дамка? Вот незадача.',
       unloaded: 'Дамка вам не подарок!',
+      leap: 'Вот это прыжок!',
+      nimble: 'Ловко скачете!',
     },
   },
   turn: {
@@ -172,6 +192,21 @@ export const ru = {
       drawRule: 'Пятнадцать ходов дамками без взятий',
       agreed: 'Ничья по соглашению',
       resigned: 'Вы сдались',
+      /** The уголки endings; RULES.md counts the limits in moves a side. */
+      corners: {
+        finish: 'Все шашки в доме соперника',
+        finishBoth: 'Оба заняли дом соперника на одном ходу',
+        /** The men the rule caught, by square; the general line if none. */
+        blocked: (squares: ReadonlyArray<string>) =>
+          squares.length === 0
+            ? 'Шашки остались дома после сорокового хода'
+            : squares.length === 1
+              ? `Шашка ${squares[0]} осталась дома после сорокового хода`
+              : `Шашки ${listOf.format(squares)} остались дома после сорокового хода`,
+        blockedBoth: 'У обоих шашки остались дома после сорокового хода',
+        limit: 'Больше шашек в доме соперника после восьмидесятого хода',
+        limitEven: 'Поровну шашек в доме соперника после восьмидесятого хода',
+      },
     },
     stats: {
       title: 'Партия в числах',
@@ -181,6 +216,9 @@ export const ru = {
       time: 'Время на ходы',
       longest: 'Самый долгий ход',
       biggest: 'Крупнейшее взятие',
+      /** Уголки rows: moves that jumped, and the most jumps in one move. */
+      leaps: 'Ходов с прыжками',
+      longestLeap: 'Самая длинная цепочка',
       /** Column heads: the player's own side comes first. */
       you: 'Вы',
       white: 'Белые',
@@ -188,6 +226,9 @@ export const ru = {
       /** Pieces taken in one move, in the "крупнейшее взятие" row. */
       inOneMove: (count: number) =>
         `${count} ${plural(count, 'шашка', 'шашки', 'шашек')}`,
+      /** Jumps in one move, in the "самая длинная цепочка" row. */
+      jumpsInOneMove: (count: number) =>
+        `${count} ${plural(count, 'прыжок', 'прыжка', 'прыжков')}`,
       none: '—',
     },
     chart: {
@@ -205,6 +246,27 @@ export const ru = {
         title: 'Перевес в партии',
         description:
           'Перевес по ходам партии: в поддавках впереди тот, у кого шашек меньше. У белых перевес отложен вверх от оси, у чёрных вниз. Дамка считается за три шашки.',
+        lead: (advantage: number) => ru.gameOver.chart.lead(advantage),
+      },
+      /**
+       * The same graph at уголки, where nothing is ever taken: the lead
+       * is in squares, how much less a side still has to walk than the
+       * other. The table under it lists the walk left after every ply.
+       */
+      corners: {
+        title: 'Перевес в гонке',
+        description:
+          'Перевес по ходам партии: на сколько клеток меньше осталось пройти до дома соперника. У белых перевес отложен вверх от оси, у чёрных вниз.',
+        lead: (advantage: number) =>
+          advantage === 0
+            ? 'Идут вровень'
+            : advantage > 0
+              ? `Белые впереди на ${bySquares(advantage)}`
+              : `Чёрные впереди на ${bySquares(-advantage)}`,
+        tableCaption: 'Осталось пройти после каждого полухода',
+        /** A table cell on its own: "21 клетка", "23 клетки", "25 клеток". */
+        left: (squares: number) =>
+          `${squares} ${plural(squares, 'клетка', 'клетки', 'клеток')}`,
       },
       /** Reading under the graph; the number leads, the move follows. */
       lead: (advantage: number) =>

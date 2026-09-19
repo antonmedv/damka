@@ -29,6 +29,41 @@ describe('startFromQuery', () => {
     expect(start.setup.opponentId).toBe(defaultPrefs.opponentId)
   })
 
+  it('opens уголки from a link, with a position in its own literal', () => {
+    const start = startFromQuery('?game=corners&pos=W:Wa1,b1:Bh8')
+    expect(start.setup.variant).toBe('corners')
+    expect(start.setup.humanColor).toBe('both')
+    expect(pieceAt(start.position!.board, sq('b1'))).toEqual({
+      color: 'white',
+      kind: 'man',
+    })
+    expect(pieceAt(start.position!.board, sq('h8'))).toEqual({
+      color: 'black',
+      kind: 'man',
+    })
+  })
+
+  it('reads a position that names no game as a checkers one', () => {
+    // The literals are not interchangeable, so a shared checkers link
+    // opens checkers even for a player who last played уголки.
+    const start = startFromQuery('?pos=W:Wc3:Bd4,d6&vs=raven', {
+      ...defaultPrefs,
+      variant: 'corners',
+    })
+    expect(start.setup.variant).toBe('checkers')
+    expect(pieceAt(start.position!.board, sq('c3'))).toBeDefined()
+    // A checkers link opens the checkers game remembered, поддавки too.
+    expect(
+      startFromQuery('?pos=W:Wc3:Bd4', { ...defaultPrefs, variant: 'giveaway' })
+        .setup.variant,
+    ).toBe('giveaway')
+    // An уголки literal needs the game named: b1 is no checkers square.
+    expect(startFromQuery('?pos=W:Wb1:Bh8').position).toBe(null)
+    expect(startFromQuery('?game=corners&pos=W:Wb1:Bh8').position).not.toBe(
+      null,
+    )
+  })
+
   it('keeps the remembered game when the query says nothing about it', () => {
     expect(startFromQuery('?vs=owl').setup.variant).toBe('checkers')
     expect(

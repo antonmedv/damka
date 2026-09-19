@@ -1,4 +1,12 @@
-import type { Board, Color, Piece, Position, Square } from './types.ts'
+import { initialPosition as cornersOpening } from '../corners/board.ts'
+import type {
+  Board,
+  Color,
+  GameVariant,
+  Piece,
+  Position,
+  Square,
+} from './types.ts'
 
 const FILES = 'abcdefgh'
 
@@ -26,7 +34,7 @@ export function squareName(square: Square): string {
 export function squareFromName(name: string): Square {
   const file = FILES.indexOf(name.charAt(0))
   const rank = Number(name.charAt(1)) - 1
-  if (file < 0 || rank < 0 || rank > 7 || Number.isNaN(rank)) {
+  if (name.length !== 2 || file < 0 || !(rank >= 0 && rank <= 7)) {
     throw new Error(`invalid square name: ${name}`)
   }
   return squareAt(file, rank)
@@ -40,8 +48,13 @@ export function pieceAt(board: Board, square: Square): Piece | undefined {
   return board[square]
 }
 
-/** 12 men per side on the dark squares of the three nearest ranks. */
-export function initialPosition(): Position {
+/**
+ * The opening of `variant`: at checkers and поддавки 12 men per side on
+ * the dark squares of the three nearest ranks, at уголки nine men in each
+ * home corner (`corners/board.ts`).
+ */
+export function initialPosition(variant: GameVariant): Position {
+  if (variant === 'corners') return cornersOpening()
   const board: (Piece | undefined)[] = new Array<Piece | undefined>(64).fill(
     undefined,
   )
@@ -51,7 +64,7 @@ export function initialPosition(): Position {
     if (rank <= 2) board[square] = { color: 'white', kind: 'man' }
     if (rank >= 5) board[square] = { color: 'black', kind: 'man' }
   }
-  return { board, toMove: 'white', drawCounter: 0 }
+  return { board, toMove: 'white', drawCounter: 0, ply: 0 }
 }
 
 export type Cell = { row: number; col: number }

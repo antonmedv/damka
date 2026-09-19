@@ -8,7 +8,10 @@ import './AdvantageChart.css'
 type AdvantageChartProps = {
   /** One per position of the game, the opening included. */
   points: ReadonlyArray<Point>
-  /** Which game it was; поддавки reads the same numbers upside down. */
+  /**
+   * Which game it was: поддавки reads the material upside down, уголки
+   * plots squares left rather than men.
+   */
   variant: GameVariant
 }
 
@@ -21,15 +24,16 @@ const PAD = { top: 12, right: 34, bottom: 22, left: 30 }
 const MIN_DOMAIN = 3
 
 /**
- * Material advantage across the game: White's lead above the axis, Black's
- * below it. One series with a sign, so the two fills carry the sign and the
- * line itself stays neutral — colouring the line as well would say the same
- * thing twice, and say it wrong where the line crosses zero.
+ * The lead across the game: White's above the axis, Black's below it. One
+ * series with a sign, so the two fills carry the sign and the line itself
+ * stays neutral — colouring the line as well would say the same thing
+ * twice, and say it wrong where the line crosses zero.
  *
  * At поддавки the material is the same and the lead is the other way
  * round, so the series is turned over rather than redrawn: up keeps
  * meaning winning on both screens, which is the only thing a reader
- * carries over from one game to the other.
+ * carries over from one game to the other. At уголки the lead is in
+ * squares left to walk, and the words under the graph say so.
  */
 export function AdvantageChart({ points, variant }: AdvantageChartProps) {
   const clipId = useId()
@@ -41,7 +45,7 @@ export function AdvantageChart({ points, variant }: AdvantageChartProps) {
   const lead = (point: Point) =>
     variant === 'giveaway' ? -point.advantage : point.advantage
   const words =
-    variant === 'giveaway' ? t.gameOver.chart.giveaway : t.gameOver.chart
+    variant === 'checkers' ? t.gameOver.chart : t.gameOver.chart[variant]
   const last = points.length - 1
   const domain = Math.max(MIN_DOMAIN, ...points.map((p) => Math.abs(lead(p))))
   const x = (ply: number) =>
@@ -200,14 +204,14 @@ export function AdvantageChart({ points, variant }: AdvantageChartProps) {
         </svg>
         <p className="chart__readout" aria-live="polite">
           <span className="chart__readout-value">
-            {t.gameOver.chart.lead(lead(current))}
+            {words.lead(lead(current))}
           </span>
           <span className="chart__readout-move">
             {t.gameOver.chart.afterMove(Math.ceil(current.ply / 2))}
           </span>
         </p>
       </div>
-      <PointTable points={points} />
+      <PointTable points={points} variant={variant} />
     </figure>
   )
 }
@@ -219,16 +223,27 @@ export function AdvantageChart({ points, variant }: AdvantageChartProps) {
  */
 const PointTable = memo(function PointTable({
   points,
+  variant,
 }: {
   points: ReadonlyArray<Point>
+  variant: GameVariant
 }) {
+  const corners = variant === 'corners'
+  const cell = (point: Point, side: 'white' | 'black') =>
+    corners
+      ? t.gameOver.chart.corners.left(point.left[side])
+      : t.gameOver.chart.pieces(point[side].men, point[side].kings)
   return (
     // The clipped box is the wrapper, not the table: a table sizes itself
     // to its rows whatever width and height it is given, so hiding one
     // this way leaves its full height behind in the dialog's scroll.
     <div className="chart__table">
       <table>
-        <caption>{t.gameOver.chart.tableCaption}</caption>
+        <caption>
+          {corners
+            ? t.gameOver.chart.corners.tableCaption
+            : t.gameOver.chart.tableCaption}
+        </caption>
         <thead>
           <tr>
             <th scope="col">{t.gameOver.chart.ply}</th>
@@ -240,12 +255,8 @@ const PointTable = memo(function PointTable({
           {points.map((point) => (
             <tr key={point.ply}>
               <th scope="row">{point.ply}</th>
-              <td>
-                {t.gameOver.chart.pieces(point.white.men, point.white.kings)}
-              </td>
-              <td>
-                {t.gameOver.chart.pieces(point.black.men, point.black.kings)}
-              </td>
+              <td>{cell(point, 'white')}</td>
+              <td>{cell(point, 'black')}</td>
             </tr>
           ))}
         </tbody>

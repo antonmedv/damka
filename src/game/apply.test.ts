@@ -21,14 +21,16 @@ const at = (literal: string) => fromBitPosition(parsePos(literal))
 
 /** Plays the legal move with this notation. */
 function play(position: Position, notation: string): Position {
-  const move = legalMoves(position).find((m) => formatMove(m) === notation)
+  const move = legalMoves(position, 'checkers').find(
+    (m) => formatMove(m) === notation,
+  )
   if (move === undefined) throw new Error(`no move ${notation}`)
   return applyMove(position, move)
 }
 
 describe('applyMove', () => {
   it('moves the piece and gives the turn to the other side', () => {
-    const before = initialPosition()
+    const before = initialPosition('checkers')
     const after = applyMove(before, quiet(c3, d4))
     expect(pieceAt(after.board, c3)).toBeUndefined()
     expect(pieceAt(after.board, d4)).toEqual({ color: 'white', kind: 'man' })
@@ -36,7 +38,7 @@ describe('applyMove', () => {
   })
 
   it('does not mutate the input position', () => {
-    const before = initialPosition()
+    const before = initialPosition('checkers')
     applyMove(before, quiet(c3, d4))
     expect(pieceAt(before.board, c3)).toEqual({ color: 'white', kind: 'man' })
     expect(pieceAt(before.board, d4)).toBeUndefined()
@@ -44,7 +46,7 @@ describe('applyMove', () => {
   })
 
   it('throws when there is no piece on the origin square', () => {
-    expect(() => applyMove(initialPosition(), quiet(d4, c3))).toThrow(
+    expect(() => applyMove(initialPosition('checkers'), quiet(d4, c3))).toThrow(
       /no piece/,
     )
   })

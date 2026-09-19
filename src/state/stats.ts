@@ -1,10 +1,16 @@
 /**
- * What the finished game looked like, read off the timeline: the material
- * each side held after every ply, and the tally the result screen shows
- * beside the graph. Nothing here reads a clock or the board — a state is
- * enough — so the numbers are the same however the game is being viewed.
+ * What the finished game looked like, read off the timeline: what each
+ * side held after every ply, and the tally the result screen shows beside
+ * the graph. Nothing here reads a clock or the board — a state is enough —
+ * so the numbers are the same however the game is being viewed.
+ *
+ * The two kinds of game measure themselves differently. Checkers and
+ * поддавки count material; уголки counts the squares each side has left
+ * to walk. A point carries both readings, and `advantage` is the one the
+ * game is played for.
  */
-import type { Color, Move, Position } from '../game/types.ts'
+import { distanceLeft, isStep } from '../corners/board.ts'
+import type { Color, GameVariant, Move, Position } from '../game/types.ts'
 import type { ClockState } from './clock.ts'
 import type { GameState } from './gameReducer.ts'
 
@@ -23,7 +29,13 @@ export type Point = {
   readonly ply: number
   readonly white: Material
   readonly black: Material
-  /** White's lead in men; negative while Black leads. */
+  /** Squares each side still has to walk at уголки; 0 at checkers. */
+  readonly left: Readonly<Record<Color, number>>
+  /**
+   * White's lead as the game counts it, in men at checkers and in squares
+   * at уголки; negative while Black leads. Поддавки reads the material
+   * lead upside down, which the chart does.
+   */
   readonly advantage: number
 }
 
@@ -34,6 +46,10 @@ export type SideStats = {
   /** The most pieces taken in one move; 0 where none were. */
   readonly best: number
   readonly crowned: number
+  /** Уголки: moves that jumped rather than stepped. */
+  readonly leaps: number
+  /** Уголки: the most jumps in one move; 0 where none were. */
+  readonly longestLeap: number
   /** Milliseconds spent on the side's own moves; 0 in an untimed game. */
   readonly spentMs: number
   /** The single longest move; 0 where there is no clock to measure it. */
@@ -84,6 +100,8 @@ type Tally = {
   taken: number
   best: number
   crowned: number
+  leaps: number
+  longestLeap: number
   spentMs: number
   longestMs: number
 }
@@ -94,9 +112,28 @@ function emptyTally(): Tally {
     taken: 0,
     best: 0,
     crowned: 0,
+    leaps: 0,
+    longestLeap: 0,
     spentMs: 0,
     longestMs: 0,
   }
+}
+
+/** Jumps in an уголки move: none for a step, one per landing square else. */
+function leapsOf(move: Move): number {
+  return isStep(move.from, move.to) ? 0 : move.path.length
+}
+
+/** White's lead the way `variant` counts it; see `Point.advantage`. */
+function advantageOf(
+  variant: GameVariant,
+  white: Material,
+  black: Material,
+  left: Readonly<Record<Color, number>>,
+): number {
+  return variant === 'corners'
+    ? left.black - left.white
+    : white.value - black.value
 }
 
 export function gameStats(state: GameState): GameStats {
@@ -117,6 +154,11 @@ export function gameStats(state: GameState): GameStats {
       tally.best = Math.max(tally.best, move.captures.length)
     }
     if (move.promotes) tally.crowned++
+    if (state.setup.variant === 'corners') {
+      const leaps = leapsOf(move)
+      if (leaps > 0) tally.leaps++
+      tally.longestLeap = Math.max(tally.longestLeap, leaps)
+    }
     if (clock !== null) {
       const spent = spentOn(clock, ply, mover)
       tally.spentMs += spent
@@ -135,10 +177,24 @@ export function gameStats(state: GameState): GameStats {
     tally.longestMs = Math.max(tally.longestMs, left)
   }
 
+  const variant = state.setup.variant
   const points = positions.map((position, ply) => {
     const white = materialOf(position, 'white')
     const black = materialOf(position, 'black')
-    return { ply, white, black, advantage: white.value - black.value }
+    const left =
+      variant === 'corners'
+        ? {
+            white: distanceLeft(position, 'white'),
+            black: distanceLeft(position, 'black'),
+          }
+        : { white: 0, black: 0 }
+    return {
+      ply,
+      white,
+      black,
+      left,
+      advantage: advantageOf(variant, white, black, left),
+    }
   })
 
   return {

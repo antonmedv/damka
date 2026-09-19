@@ -25,10 +25,15 @@ describe('NavBar', () => {
     )
   })
 
-  it('lists upcoming games as disabled with a badge', () => {
+  it('offers all three games, Уголки included', () => {
     render(<NavBar />)
-    const tab = screen.getByRole('button', { name: /Уголки.*скоро/ })
-    expect(tab).toBeDisabled()
+    const tabs = screen.getAllByRole('link').map((tab) => tab.textContent)
+    expect(tabs).toEqual(['Шашки', 'Поддавки', 'Уголки'])
+    expect(screen.getByRole('link', { name: 'Уголки' })).toHaveAttribute(
+      'href',
+      expect.stringContaining('game=corners'),
+    )
+    expect(screen.queryByText('скоро')).toBeNull()
   })
 
   it('offers Поддавки as a game that can be played', () => {

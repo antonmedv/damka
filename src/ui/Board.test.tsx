@@ -7,12 +7,12 @@ import { captureAnimations } from './testAnimations.ts'
 
 describe('Board', () => {
   it('renders 64 squares as buttons', () => {
-    render(<Board position={initialPosition()} orientation="white" />)
+    render(<Board position={initialPosition('checkers')} orientation="white" />)
     expect(screen.getAllByRole('button')).toHaveLength(64)
   })
 
   it('renders 12 white and 12 black men in the starting position', () => {
-    render(<Board position={initialPosition()} orientation="white" />)
+    render(<Board position={initialPosition('checkers')} orientation="white" />)
     expect(screen.getAllByRole('button', { name: /белая шашка/ })).toHaveLength(
       12,
     )
@@ -22,7 +22,7 @@ describe('Board', () => {
   })
 
   it('marks a1 dark and b1 light', () => {
-    render(<Board position={initialPosition()} orientation="white" />)
+    render(<Board position={initialPosition('checkers')} orientation="white" />)
     expect(screen.getByRole('button', { name: /^a1,/ })).toHaveClass(
       'board__square--dark',
     )
@@ -32,26 +32,26 @@ describe('Board', () => {
   })
 
   it('labels empty squares as empty', () => {
-    render(<Board position={initialPosition()} orientation="white" />)
+    render(<Board position={initialPosition('checkers')} orientation="white" />)
     expect(
       screen.getByRole('button', { name: 'd4, пустое поле' }),
     ).toBeInTheDocument()
   })
 
   it('shows a8 first when white is at the bottom', () => {
-    render(<Board position={initialPosition()} orientation="white" />)
+    render(<Board position={initialPosition('checkers')} orientation="white" />)
     const first = screen.getAllByRole('button')[0]
     expect(first).toHaveAccessibleName(/^a8,/)
   })
 
   it('shows h1 first when black is at the bottom', () => {
-    render(<Board position={initialPosition()} orientation="black" />)
+    render(<Board position={initialPosition('checkers')} orientation="black" />)
     const first = screen.getAllByRole('button')[0]
     expect(first).toHaveAccessibleName(/^h1,/)
   })
 
   it('shows file and rank coordinates', () => {
-    render(<Board position={initialPosition()} orientation="white" />)
+    render(<Board position={initialPosition('checkers')} orientation="white" />)
     expect(screen.getByText('a')).toBeInTheDocument()
     expect(screen.getByText('8')).toBeInTheDocument()
   })
@@ -68,7 +68,7 @@ describe('Board: last move', () => {
     }
     render(
       <Board
-        position={initialPosition()}
+        position={initialPosition('checkers')}
         orientation="white"
         lastMove={lastMove}
         slide={null}
@@ -84,6 +84,24 @@ describe('Board: last move', () => {
   })
 })
 
+describe('Board: уголки deadline', () => {
+  it('rings the men late to leave home and says so in their names', () => {
+    render(
+      <Board
+        position={initialPosition('corners')}
+        orientation="white"
+        overdue={[squareFromName('a1')]}
+      />,
+    )
+    const a1 = screen.getByRole('button', { name: /^a1,/ })
+    expect(a1).toHaveClass('board__square--overdue')
+    expect(a1).toHaveAccessibleName('a1, белая шашка, не вышла из дома')
+    const b1 = screen.getByRole('button', { name: /^b1,/ })
+    expect(b1).not.toHaveClass('board__square--overdue')
+    expect(b1).toHaveAccessibleName('b1, белая шашка')
+  })
+})
+
 describe('Board: keyboard entry point', () => {
   const tabbable = () =>
     screen
@@ -92,11 +110,13 @@ describe('Board: keyboard entry point', () => {
 
   it('starts at the bottom-left square for either orientation', () => {
     const { rerender } = render(
-      <Board position={initialPosition()} orientation="white" />,
+      <Board position={initialPosition('checkers')} orientation="white" />,
     )
     expect(tabbable()).toHaveAccessibleName(/^a1,/)
 
-    rerender(<Board position={initialPosition()} orientation="black" />)
+    rerender(
+      <Board position={initialPosition('checkers')} orientation="black" />,
+    )
     expect(tabbable()).toHaveAccessibleName(/^h8,/)
   })
 })
@@ -122,7 +142,7 @@ describe('Board: slide', () => {
   function afterChain(): Position {
     const board = new Array<Piece | undefined>(64).fill(undefined)
     board[squareFromName('c7')] = { color: 'white', kind: 'man' }
-    return { board, toMove: 'black', drawCounter: 0 }
+    return { board, toMove: 'black', drawCounter: 0, ply: 0 }
   }
 
   it('flies the arriving piece through every landing square', () => {
@@ -167,7 +187,7 @@ describe('Board: slide', () => {
     board[squareFromName('d4')] = { color: 'black', kind: 'man' }
     render(
       <Board
-        position={{ board, toMove: 'white', drawCounter: 0 }}
+        position={{ board, toMove: 'white', drawCounter: 0, ply: 0 }}
         orientation="white"
         slide={{
           from: squareFromName('c3'),

@@ -168,6 +168,19 @@
   opacity: 0.85;
 }
 
+/* A man late to leave home at уголки: a ring in the warning colour round
+   the piece, drawn under it so it reads as a halo. Its own layer rather
+   than the box-shadow the selection and last-move rings use, so it shows
+   together with either of them. */
+.board__square--overdue::before {
+  content: '';
+  position: absolute;
+  inset: 4%;
+  border-radius: 50%;
+  border: 3px solid var(--danger);
+  pointer-events: none;
+}
+
 /* The previous move stays readable at a glance: both squares are tinted
    and ringed, the destination stronger since a piece covers most of it. */
 .board__square--last-from,

@@ -16,7 +16,16 @@
  *
  * `variant=giveaway` plays поддавки instead of checkers; the tables are
  * then off for both sides whatever `db` says, because they hold checkers
- * values. `baseline` says which side searches on the negated checkers
+ * values. `variant=corners` plays уголки on its own engine, where only
+ * `games`, `scale`, `seed`, `pairs`, `show` and `random` apply, and
+ * `weights=step,inside,straggler,tempo` replaces that engine's evaluation
+ * weights. `weightsB` gives the second side of every pairing weights of
+ * its own, which is how one set is measured against another:
+ *
+ *   npm run selfplay -- variant=corners games=100 pairs=owl-owl random=4 \
+ *     weights=100,20,50,5 weightsB=100,20,0,5
+ *
+ * `baseline` says which side searches on the negated checkers
  * evaluation instead of the поддавки one, which is how the latter is
  * measured against what it replaced:
  *
@@ -60,6 +69,19 @@
  * says who converts it.
  */
 import { readFileSync } from 'node:fs'
+import {
+  formatBoard as formatCornersBoard,
+  initialPosition as cornersOpening,
+} from '../corners/board.ts'
+import {
+  DEFAULT_WEIGHTS as CORNERS_WEIGHTS,
+  weights as cornersWeights,
+} from '../corners/eval.ts'
+import type { Weights as CornersWeights } from '../corners/eval.ts'
+import { detailedOf as cornersDetailedOf } from '../corners/movegen.ts'
+import { search as searchCorners } from '../corners/search.ts'
+import { status as cornersStatus } from '../corners/status.ts'
+import { ttClear as cornersTtClear } from '../corners/tt.ts'
 import { APPLIED, makeMove } from '../engine/apply.ts'
 import { dbAddSlice, dbLimit } from '../engine/db.ts'
 import { popcount } from '../engine/bitboard.ts'
@@ -86,6 +108,10 @@ import {
 import { ttClear } from '../engine/tt.ts'
 import { CHECKERS, GIVEAWAY } from '../engine/variant.ts'
 import type { Variant } from '../engine/variant.ts'
+import { applyMove } from '../game/apply.ts'
+import { legalMoves } from '../game/moves.ts'
+import { formatMove as formatCornersMove } from '../game/notation.ts'
+import type { Position } from '../game/types.ts'
 import { personas } from './personas.ts'
 import type { PersonaId } from './personas.ts'
 import { pickRoot } from './think.ts'
@@ -100,8 +126,10 @@ type DbSide = 'both' | 'none' | 'a' | 'b'
 type EvalSide = 'none' | 'both' | 'a' | 'b'
 
 type Args = {
-  /** Which game the tournament plays; `checkers` or `giveaway`. */
+  /** Which checkers game the tournament plays; moot when `corners` is set. */
   variant: Variant
+  /** Уголки instead: the other engine, and its own game loop. */
+  corners: boolean
   games: number
   scale: number
   seed: number
@@ -112,10 +140,13 @@ type Args = {
   /** Side playing on the baseline поддавки evaluation; see `baselineEval`. */
   baseline: EvalSide
   /**
-   * `man,king,promotion,tempo` for the поддавки evaluation, so a set can
-   * be tried without editing the engine. Empty leaves it as it ships.
+   * `man,king,promotion,tempo` for the поддавки evaluation, or
+   * `step,inside,straggler,tempo` for the уголки one, so a set can be
+   * tried without editing the engine. Empty leaves it as it ships.
    */
   weights: string
+  /** Уголки weights for side B of every pairing; empty means the same as A. */
+  weightsB: string
   /** Random plies at the start of every game, to vary the openings. */
   random: number
   /** Pieces of the random placement every game starts from; 0 = opening. */
@@ -131,6 +162,7 @@ function parseArgs(): Args {
     (globalThis as { process?: { argv?: string[] } }).process?.argv ?? []
   const args: Args = {
     variant: CHECKERS,
+    corners: false,
     games: 20,
     scale: 0.05,
     seed: 1,
@@ -139,6 +171,7 @@ function parseArgs(): Args {
     db: 'both',
     baseline: 'none',
     weights: '',
+    weightsB: '',
     random: 0,
     pieces: 0,
     dbA: -1,
@@ -150,6 +183,7 @@ function parseArgs(): Args {
     if (value === undefined) continue
     if (key === 'variant') {
       args.variant = value === 'giveaway' ? GIVEAWAY : CHECKERS
+      args.corners = value === 'corners'
     } else if (key === 'games') args.games = Number(value)
     else if (key === 'scale') args.scale = Number(value)
     else if (key === 'seed') args.seed = Number(value)
@@ -158,6 +192,7 @@ function parseArgs(): Args {
     else if (key === 'db') args.db = value as DbSide
     else if (key === 'baseline') args.baseline = value as EvalSide
     else if (key === 'weights') args.weights = value
+    else if (key === 'weightsB') args.weightsB = value
     else if (key === 'random') args.random = Number(value)
     else if (key === 'pieces') args.pieces = Number(value)
     else if (key === 'dbA') args.dbA = Number(value)
@@ -355,10 +390,134 @@ function moveNumber(ply: number, p: BitPosition): string {
   return `${Math.floor(ply / 2) + 1}.${p.side === WHITE ? '' : '..'}`
 }
 
+/** The уголки game of a pairing: what the checkers `Game` has that applies. */
+type CornersGame = Pick<
+  Game,
+  | 'white'
+  | 'black'
+  | 'aIsWhite'
+  | 'scale'
+  | 'rng'
+  | 'openingRng'
+  | 'openingPlies'
+  | 'tally'
+  | 'show'
+> & {
+  /** Evaluation weights of each colour; the tables are rebuilt per move. */
+  readonly weightsWhite: CornersWeights
+  readonly weightsBlack: CornersWeights
+}
+
+/**
+ * One game of уголки on the other engine, through the game layer: the
+ * blocking rules end every game, so there is no ply cap of its own. The
+ * table is shared and cleared before the game, as at checkers, and before
+ * every search when the two sides evaluate differently, so nothing one
+ * evaluation produced reaches the other.
+ */
+function playCorners(game: CornersGame): number {
+  const { tally, show } = game
+  const splitEval = game.weightsWhite !== game.weightsBlack
+  cornersTtClear()
+  let position: Position = cornersOpening()
+  if (show) console.log(`${formatCornersBoard(position)}\n`)
+  for (let ply = 0; ; ply++) {
+    // One move list for the status check and the random opening both.
+    const moves = legalMoves(position, 'corners')
+    const result = cornersStatus(position, moves.length)
+    if (result !== ONGOING) {
+      if (show) console.log(`${resultName(result)} after ${ply} plies\n`)
+      return result
+    }
+    const white = position.toMove === 'white'
+    const number = `${Math.floor(ply / 2) + 1}.${white ? '' : '..'}`
+    let move = moves[0]!
+    if (ply < game.openingPlies) {
+      move =
+        moves[
+          Math.min(
+            moves.length - 1,
+            Math.floor(game.openingRng() * moves.length),
+          )
+        ]!
+      if (show) console.log(`${number} random ${formatCornersMove(move)}`)
+    } else {
+      const id = white ? game.white : game.black
+      const persona = personas[id]
+      cornersWeights(white ? game.weightsWhite : game.weightsBlack)
+      if (splitEval) cornersTtClear()
+      const start = performance.now()
+      const r = searchCorners(position, {
+        depth: persona.depth,
+        budgetMs: Math.max(1, Math.round(persona.budgetMs * game.scale)),
+        margin: persona.margin,
+      })
+      tally.ms += performance.now() - start
+      if (white === game.aIsWhite) {
+        tally.depth += r.depth
+        tally.moves++
+      } else {
+        tally.depthOther += r.depth
+        tally.movesOther++
+      }
+      const slot = pickRoot(
+        r.root,
+        persona.margin,
+        persona.temperature,
+        game.rng,
+      )
+      move = cornersDetailedOf(position, r.root[slot]!)
+      if (show) {
+        console.log(
+          `${number} ${id} ${formatCornersMove(move)}` +
+            ` (depth ${r.depth}, score ${r.root[slot + 2]!})`,
+        )
+      }
+    }
+    position = applyMove(position, move)
+    if (show) console.log(`${formatCornersBoard(position)}\n`)
+  }
+}
+
+/**
+ * Comma-separated weights. An empty entry keeps the shipped value;
+ * anything that is not a number is refused here, since the engines' int
+ * tables would store a `NaN` as zero and the run would measure nothing.
+ */
+function numbersOf(text: string): (number | undefined)[] {
+  return text.split(',').map((part) => {
+    if (part === '') return undefined
+    const value = Number(part)
+    if (!Number.isFinite(value)) {
+      throw new Error(`not a number in weights: ${part}`)
+    }
+    return value
+  })
+}
+
+/** Уголки weights from `step,inside,straggler,tempo`; the shipped set when empty. */
+function cornersWeightsOf(text: string): CornersWeights {
+  if (text === '') return CORNERS_WEIGHTS
+  const [step, inside, straggler, tempo] = numbersOf(text)
+  return {
+    step: step ?? CORNERS_WEIGHTS.step,
+    inside: inside ?? CORNERS_WEIGHTS.inside,
+    straggler: straggler ?? CORNERS_WEIGHTS.straggler,
+    tempo: tempo ?? CORNERS_WEIGHTS.tempo,
+  }
+}
+
 function main(): void {
   const args = parseArgs()
-  if (args.weights !== '') {
-    const [man, king, promotion, tempo] = args.weights.split(',').map(Number)
+  const cornersA = cornersWeightsOf(args.weights)
+  const cornersB =
+    args.weightsB === '' ? cornersA : cornersWeightsOf(args.weightsB)
+  if (args.corners && (args.weights !== '' || args.weightsB !== '')) {
+    console.log(
+      `уголки weights: A ${args.weights || 'shipped'}, B ${args.weightsB || 'as A'}\n`,
+    )
+  } else if (args.weights !== '') {
+    const [man, king, promotion, tempo] = numbersOf(args.weights)
     weights({
       man: man ?? DEFAULT_WEIGHTS.man,
       king: king ?? DEFAULT_WEIGHTS.king,
@@ -367,9 +526,9 @@ function main(): void {
     })
     console.log(`поддавки weights: ${args.weights}\n`)
   }
-  // поддавки never probes the tables, so a поддавки run should not load
-  // them either - and should not print a line claiming it did.
-  const useDb = args.db !== 'none' && args.variant === CHECKERS
+  // Only checkers probes the tables, so no other run should load them
+  // either - or print a line claiming it did.
+  const useDb = args.db !== 'none' && args.variant === CHECKERS && !args.corners
   const tables = useDb ? loadTables(args.dbdir) : { slices: 0, pieces: 0 }
   console.log(
     `selfplay: ${args.games} games per pairing, budgets x${args.scale},` +
@@ -415,16 +574,9 @@ function main(): void {
             ` white ${aIsWhite ? a : b}, black ${aIsWhite ? b : a}\n`,
         )
       }
-      const start =
-        args.pieces > 0
-          ? randomEndgame(createRng(args.seed * 104729 + (g >> 1)), args.pieces)
-          : initialBitPosition()
-      if (show) console.log(`start ${formatPos(start)}\n`)
-      const result = play({
-        variant: args.variant,
+      const shared = {
         white: aIsWhite ? a : b,
         black: aIsWhite ? b : a,
-        start,
         aIsWhite,
         scale: args.scale,
         rng: createRng(args.seed * 100003 + g),
@@ -433,6 +585,27 @@ function main(): void {
         openingPlies: args.random,
         tally,
         show,
+      }
+      if (args.corners) {
+        const result = playCorners({
+          ...shared,
+          weightsWhite: aIsWhite ? cornersA : cornersB,
+          weightsBlack: aIsWhite ? cornersB : cornersA,
+        })
+        if (result === DRAW) tally.draws++
+        else if ((result === WHITE_WINS) === aIsWhite) tally.wins++
+        else tally.losses++
+        continue
+      }
+      const start =
+        args.pieces > 0
+          ? randomEndgame(createRng(args.seed * 104729 + (g >> 1)), args.pieces)
+          : initialBitPosition()
+      if (show) console.log(`start ${formatPos(start)}\n`)
+      const result = play({
+        ...shared,
+        variant: args.variant,
+        start,
         dbWhite: aIsWhite ? dbA : dbB,
         dbBlack: aIsWhite ? dbB : dbA,
         baseWhite: aIsWhite ? baseA : baseB,

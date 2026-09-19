@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
+import { parseCorners } from '../corners/position.ts'
 import { fromBitPosition } from '../engine/adapter.ts'
 import { parsePos } from '../engine/position.ts'
 import { MATE_BOUND } from '../engine/score.ts'
 import { squareFromName } from '../game/board.ts'
 import { gameReducer, initialState, outcome } from '../state/gameReducer.ts'
 import type { GameSetup, GameState } from '../state/gameReducer.ts'
+import { deadlineOf } from '../state/deadline.ts'
 import { createHistory } from '../state/history.ts'
 import { banterOf } from './banter.ts'
 import type { Banter } from './banter.ts'
@@ -48,9 +50,10 @@ function played(
   return { ...move(at(literal, friends), from, to), setup }
 }
 
-/** `banterOf` is given the status the screen has already worked out. */
+/** `banterOf` is given what the screen has already worked out. */
 function say(state: GameState): Banter | null {
-  return banterOf(state, outcome(state))
+  const status = outcome(state)
+  return banterOf(state, status, deadlineOf(state, status))
 }
 
 describe('banterOf', () => {
@@ -126,5 +129,65 @@ describe('banterOf', () => {
     expect(say(played('B:Wd4,f6,h2:Bg7', 'g7', 'c3', friends))).toBe(null)
     const taken = played('B:Wd4,f6,h2:Bg7', 'g7', 'c3')
     expect(say(gameReducer(taken, { type: 'jumpTo', index: 0 }))).toBe(null)
+  })
+})
+
+describe('banterOf: уголки', () => {
+  const vsHareRace: GameSetup = { ...vsHare, variant: 'corners' }
+  const friendsRace: GameSetup = { ...friends, variant: 'corners' }
+
+  /** The race after `from`-`to`, read as a game against the hare. */
+  function raced(literal: string, from: string, to: string): GameState {
+    const start: GameState = {
+      ...initialState(friendsRace),
+      history: createHistory(parseCorners(literal)),
+    }
+    return { ...move(start, from, to), setup: vsHareRace }
+  }
+
+  it('admires a long chain by the human', () => {
+    expect(raced('W:Wa1:Ba2,a4,b5', 'a1', 'c5').moves[0]!.path).toHaveLength(3)
+    expect(say(raced('W:Wa1:Ba2,a4,b5', 'a1', 'c5'))).toEqual({
+      kind: 'remark',
+      id: 'nimble',
+    })
+  })
+
+  it('is pleased with a long chain of its own', () => {
+    expect(say(raced('B:Wh7,h5,g4:Bh8', 'h8', 'f4'))).toEqual({
+      kind: 'remark',
+      id: 'leap',
+    })
+  })
+
+  it('has nothing to say about a step or a short jump', () => {
+    expect(say(raced('W:Wa1:Bh8', 'a1', 'b1'))).toBe(null)
+    expect(say(raced('W:Wa1:Ba2,a4', 'a1', 'a5'))).toBe(null)
+  })
+
+  it('counts the player down to the home deadline', () => {
+    const late: GameState = {
+      ...initialState(vsHareRace),
+      history: createHistory(parseCorners('W:Wa1,d4:Bd5:70')),
+    }
+    expect(say(late)).toEqual({ kind: 'deadline', moves: 5 })
+  })
+
+  it('puts the deadline before a word on the move', () => {
+    // A chain worth a word, by a player with a man still at home.
+    expect(say(raced('W:Wa1,b1:Ba2,a4,b5:70', 'a1', 'c5'))).toEqual({
+      kind: 'deadline',
+      moves: 4,
+    })
+  })
+
+  it('falls silent once the last move before the deadline is played', () => {
+    expect(say(raced('W:Wb1,d4:Bh8:78', 'd4', 'd5'))).toBe(null)
+  })
+
+  it('lets the result speak once the rule has ended the game', () => {
+    expect(say(raced('W:Wb1,d4:Bh8:79', 'd4', 'd5'))).toEqual({
+      kind: 'result',
+    })
   })
 })

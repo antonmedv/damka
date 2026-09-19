@@ -38,7 +38,7 @@
  * values a king at three men and already wants men to stay back. This set
  * beats it 57% over 400 games on a seed it was not chosen on - 61% on the
  * seed it was, which is the selection showing and not the number to
- * quote. See `baselineEval`, `weights`, and `tasks/todo.md` for the runs.
+ * quote. See `baselineEval`, `weights`, and `tasks/todo-giveaway.md` for the runs.
  *
  * Men go through the same two 16-bit lookups as `eval.ts`; kings are a
  * flat weight, so they need only a popcount.
@@ -68,7 +68,7 @@ export type Weights = {
    * having the move is not obviously the good news it is at checkers -
    * and self-play answered it: a negative tempo is measurably worse, a
    * positive one is not distinguishable from none. The checkers sign,
-   * then, and the size hardly matters. See `tasks/todo.md` for the runs.
+   * then, and the size hardly matters. See `tasks/todo-giveaway.md` for the runs.
    */
   readonly tempo: number
 }

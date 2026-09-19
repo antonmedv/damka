@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { parseCorners } from '../corners/position.ts'
 import { fromBitPosition } from '../engine/adapter.ts'
 import { parsePos } from '../engine/position.ts'
 import { squareFromName } from '../game/board.ts'
@@ -141,5 +142,45 @@ describe('gameStats', () => {
       spentMs: 0,
       longestMs: 0,
     })
+  })
+})
+
+describe('gameStats: уголки', () => {
+  /** A two-human race starting from the literal. */
+  function raceAt(literal: string): GameState {
+    return initialState(
+      { variant: 'corners', opponentId: 'friend', humanColor: 'both' },
+      parseCorners(literal),
+      0,
+    )
+  }
+
+  it('measures the race in squares left', () => {
+    const state = play(raceAt('W:Wa1:Bh8'), ['a1', 'b1'])
+    expect(gameStats(state).points.map((p) => p.left)).toEqual([
+      { white: 10, black: 10 },
+      { white: 9, black: 10 },
+    ])
+    expect(gameStats(state).points.map((p) => p.advantage)).toEqual([0, 1])
+  })
+
+  it('counts jumps and the longest chain, and a step as neither', () => {
+    const state = play(raceAt('W:Wa1:Ba2,a4,b5'), ['a1', 'c5'], ['b5', 'b4'])
+    expect(gameStats(state).white).toMatchObject({
+      moves: 1,
+      leaps: 1,
+      longestLeap: 3,
+      taken: 0,
+    })
+    expect(gameStats(state).black).toMatchObject({
+      moves: 1,
+      leaps: 0,
+      longestLeap: 0,
+    })
+  })
+
+  it('counts a single jump as a chain of one', () => {
+    const state = play(raceAt('W:Wa1:Ba2,h8'), ['a1', 'a3'])
+    expect(gameStats(state).white).toMatchObject({ leaps: 1, longestLeap: 1 })
   })
 })

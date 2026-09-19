@@ -61,6 +61,7 @@ export function fromBitPosition(p: BitPosition): Position {
     board: result,
     toMove: p.side === WHITE ? 'white' : 'black',
     drawCounter: p.plies,
+    ply: 0,
   }
 }
 

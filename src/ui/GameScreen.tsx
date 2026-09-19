@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Dispatch } from 'react'
+import { formatCorners } from '../corners/position.ts'
 import { toBitPosition } from '../engine/adapter.ts'
 import { moveKey } from '../engine/move.ts'
 import { formatPos } from '../engine/position.ts'
@@ -10,6 +11,7 @@ import { budgetFor, isPersonaId, personas } from '../opponents/personas.ts'
 import { defaultThinker } from '../opponents/thinker.ts'
 import type { Thinker } from '../opponents/thinker.ts'
 import { playMove, preloadMoveSound } from '../sound/sound.ts'
+import { deadlineOf } from '../state/deadline.ts'
 import {
   canRedoGame,
   canUndoGame,
@@ -94,6 +96,7 @@ export function GameScreen({
   // Read once: every selector below that asks how the game stands would
   // otherwise generate the same position's legal moves all over again.
   const status = outcome(state)
+  const deadline = deadlineOf(state, status)
 
   return (
     <div className={`game${state.clock === null ? '' : ' game--timed'}`}>
@@ -105,7 +108,7 @@ export function GameScreen({
           status={status}
           onTime={lostOnTime(state) !== null}
           thinking={state.thinking !== null}
-          banter={banterOf(state, status)}
+          banter={banterOf(state, status, deadline)}
           onShowResult={status === 'ongoing' ? undefined : showResult}
           onAccept={(offer) => dispatch({ type: 'accept', offer })}
           onDecline={(offer) => dispatch({ type: 'decline', offer })}
@@ -121,6 +124,7 @@ export function GameScreen({
           targets={targets(state)}
           movable={movable(state)}
           lastMove={lastMove(state)}
+          overdue={deadline?.squares}
           slide={state.slide}
           reviewing={isReviewing(state)}
           busy={state.thinking !== null}
@@ -288,7 +292,11 @@ function useComputerMove(
       console.error('computer move failed', error)
       dispatch({ type: 'thinkFailed', id })
     }
-    const literal = formatPos(toBitPosition(position))
+    const variant = state.setup.variant
+    const literal =
+      variant === 'corners'
+        ? formatCorners(position)
+        : formatPos(toBitPosition(position))
     // On a clock the persona thinks out of its own bank, so its limits
     // come from what is left of it rather than from the persona alone.
     const clock = clockView(state, at())
@@ -303,7 +311,7 @@ function useComputerMove(
     thinker
       .think({
         id,
-        variant: state.setup.variant,
+        variant,
         position: literal,
         persona,
         seed: seed(),
@@ -314,7 +322,8 @@ function useComputerMove(
           if (issued.current?.id !== id) return
           issued.current = null
           const key = moveKey(reply.move)
-          if (!legalMoves(position).some((move) => moveKey(move) === key)) {
+          const legal = legalMoves(position, variant)
+          if (!legal.some((move) => moveKey(move) === key)) {
             fail(new Error(`illegal reply ${key} in ${literal}`))
             return
           }

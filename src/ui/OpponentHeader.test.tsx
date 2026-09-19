@@ -217,6 +217,20 @@ describe('OpponentHeader: actions', () => {
     expect(onNewGame).toHaveBeenCalledTimes(1)
   })
 
+  it('passes the home deadline on, in the bubble and for a reader', () => {
+    render(
+      <OpponentHeader
+        opponent={opponentById('hare')}
+        humanColor="white"
+        toMove="white"
+        banter={{ kind: 'deadline', moves: 5 }}
+      />,
+    )
+    const line = 'Выведите шашки из дома: осталось 5 ходов'
+    expect(bubble()).toHaveTextContent(line)
+    expect(screen.getByRole('status')).toHaveTextContent(line)
+  })
+
   it('leaves the board flip to the navbar', () => {
     render(
       <OpponentHeader

@@ -51,7 +51,7 @@ describe('adapter', () => {
     board[squareFromName('b1')] = { color: 'white', kind: 'man' }
     const result: Board = board
     expect(() =>
-      toBitPosition({ board: result, toMove: 'white', drawCounter: 0 }),
+      toBitPosition({ board: result, toMove: 'white', drawCounter: 0, ply: 0 }),
     ).toThrow('not a dark square')
   })
 })
