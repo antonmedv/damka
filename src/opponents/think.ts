@@ -172,13 +172,15 @@ function cornersSearch(request: ThinkRequest, limits: Limits): Searched {
  * best; the pick is a softmax over their scores with `temperature`, so a
  * move `temperature` points behind is about e times less likely.
  *
- * A win the search has found is played the shortest way, whatever the
- * margin: mate scores differ by plies, and blurring them would let a
- * persona wander between a finish in three and a finish in four for as
- * long as the dice fall that way. At уголки that is a man shuffling about
- * inside the target it has already filled; at checkers it is a king
- * declining to take. The same goes for a loss: a persona that is lost
- * plays the longest defence rather than one of the others.
+ * A decided game is played straight. When the best score is a mate score
+ * (`engine/score.ts`; both engines use the band) the margin is skipped
+ * and slot 0 is played: the shortest win, or the longest defence when
+ * every move loses. Mate scores differ by a point per ply, so any margin
+ * above zero would blur a win in three with a win in five, and a persona
+ * would put the finish off at random - a king declining the last capture
+ * at шашки, a man strolling inside a filled target at уголки. The win was
+ * never at risk and which positions are won does not change; only kitten,
+ * hare and fox, the personas with a margin, play differently.
  */
 export function pickRoot(
   root: Int32Array,
